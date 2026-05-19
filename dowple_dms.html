@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dowple 대시보드</title>
+  <!-- Tabler Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.30.0/dist/tabler-icons.min.css">
+  <style>
+    /* CSS 변수 (라이트 테마 기본값) */
+    :root {
+      --bg: #f8f7f4;
+      --surface: #ffffff;
+      --surface2: #f3f2ef;
+      --accent: #1D9E75;
+      --accent2: #0F6E56;
+      --accent-light: #E1F5EE;
+      --text: #1a1a1a;
+      --text2: #555;
+      --text3: #888;
+      --border: rgba(0,0,0,0.1);
+      --border2: rgba(0,0,0,0.18);
+      --info-bg: #EFF6FF;      --info-text: #1d4ed8;    --info-border: #bfdbfe;
+      --warn-bg: #FFFBEB;      --warn-text: #92400e;    --warn-border: #fde68a;
+      --success-bg: #ECFDF5;   --success-text: #065f46; --success-border: #a7f3d0;
+      --danger-bg: #FEF2F2;    --danger-text: #991b1b;  --danger-border: #fca5a5;
+      --r-md: 8px;
+      --r-lg: 12px;
+      --r-xl: 16px;
+      --shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    }
+    
+    /* 다크 모드 */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d0d0d;
+        --surface: #181818;
+        --surface2: #222;
+        --text: #e8e8e8;
+        --text2: #aaa;
+        --text3: #666;
+        --border: rgba(255,255,255,0.1);
+        --border2: rgba(255,255,255,0.18);
+        --info-bg: #1e2a3a;     --info-text: #93c5fd;
+        --warn-bg: #2a2010;     --warn-text: #fcd34d;
+        --success-bg: #0d2018;  --success-text: #6ee7b7;
+        --danger-bg: #2a1010;   --danger-text: #fca5a5;
+        --shadow: 0 1px 4px rgba(0,0,0,0.3);
+      }
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    /* 레이아웃 클래스 */
+    .app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+    .sidebar { background: var(--surface); border-right: 0.5px solid var(--border); position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; padding: 20px 0; }
+    .main { display: flex; flex-direction: column; overflow: hidden; }
+    .content { flex: 1; padding: 24px; overflow-y: auto; }
+    .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .g4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+    @media (max-width: 680px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .g2, .g4 { grid-template-columns: 1fr; }
+    }
+
+    /* 컴포넌트 */
+    .logo { padding: 0 20px 20px; display: flex; align-items: center; gap: 10px; }
+    .logo-mark { background: var(--accent); color: white; width: 32px; height: 32px; border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; }
+    .logo-text { font-size: 18px; font-weight: bold; }
+    .logo-sub { font-size: 11px; color: var(--text3); }
+    
+    .sb-section { font-size: 11px; color: var(--text3); padding: 10px 20px 5px; font-weight: bold; margin-top: 10px; }
+    .sb-item, .sb-folder { padding: 8px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text2); transition: 0.2s; }
+    .sb-item:hover, .sb-folder:hover { background: var(--surface2); color: var(--text); }
+    .sb-item.active { background: var(--accent-light); color: var(--accent2); font-weight: bold; }
+    .sb-folder { justify-content: space-between; }
+    .sb-folder span { display: flex; align-items: center; gap: 8px; }
+    
+    .fb { background: var(--surface2); padding: 2px 6px; border-radius: 12px; font-size: 11px; color: var(--text2); }
+    .stat-row { margin-top: auto; padding: 20px; font-size: 12px; color: var(--text3); display: flex; align-items: center; gap: 8px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot-g { background: #10b981; }
+
+    .topbar { padding: 20px 24px; border-bottom: 0.5px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: space-between; }
+    .topbar-title { font-size: 20px; font-weight: bold; }
+
+    .btn { background: var(--surface); border: 0.5px solid var(--border2); color: var(--text); padding: 8px 16px; border-radius: var(--r-md); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; transition: 0.2s; }
+    .btn:hover { background: var(--surface2); }
+    .btn-primary { background: var(--accent); color: white; border: none; }
+    .btn-primary:hover { background: var(--accent2); }
+    
+    .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-lg); padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; transition: opacity 0.5s; }
+    .card-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .card-title { font-size: 15px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; border: 0.5px solid transparent; }
+    .b-info { background: var(--info-bg); color: var(--info-text); border-color: var(--info-border); }
+    .b-warn { background: var(--warn-bg); color: var(--warn-text); border-color: var(--warn-border); }
+    .b-success { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+    .b-danger { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border); }
+
+    .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 0.5px solid var(--border); }
+    .tab { padding: 10px 4px; cursor: pointer; color: var(--text3); border-bottom: 2px solid transparent; }
+    .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); font-weight: bold; }
+    
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .drop-zone { border: 2px dashed var(--border2); border-radius: var(--r-lg); padding: 40px; text-align: center; cursor: pointer; background: var(--surface); transition: 0.2s; margin-bottom: 20px; }
+    .drop-zone:hover, .drop-zone.drag { border-color: var(--accent); background: var(--accent-light); }
+    .drop-zone i { font-size: 40px; color: var(--accent); margin-bottom: 10px; }
+    .drop-zone p { font-size: 16px; margin: 0 0 8px; }
+    .drop-zone span { font-size: 12px; color: var(--text3); }
+
+    .phase-row { display: flex; gap: 16px; margin-bottom: 12px; align-items: flex-start; }
+    .phase-num { width: 24px; height: 24px; border-radius: 50%; background: var(--surface2); color: var(--text2); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 0.5px solid var(--border); flex-shrink: 0; }
+    .phase-num.done { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+    .phase-num.running { background: var(--info-bg); color: var(--info-text); border-color: var(--info-border); animation: pulse 1.5s infinite; }
+    
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(29, 78, 216, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(29, 78, 216, 0); } 100% { box-shadow: 0 0 0 0 rgba(29, 78, 216, 0); } }
+
+    .phase-label { font-size: 13px; font-weight: bold; margin-bottom: 4px; }
+    .phase-desc { font-size: 12px; color: var(--text3); margin-bottom: 8px; }
+    
+    .pbar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+    .pfill { height: 100%; background: var(--accent); width: 0; transition: width 0.1s linear; }
+
+    .evidence { font-family: monospace; background: var(--surface2); padding: 10px; border-radius: var(--r-md); font-size: 11px; margin-bottom: 10px; word-break: break-all; }
+    
+    .rec-item { padding: 12px; border: 0.5px solid var(--border); border-radius: var(--r-md); margin-bottom: 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: 0.2s; }
+    .rec-item:hover { background: var(--surface2); }
+    .rec-item.sel { border-color: var(--accent); background: var(--accent-light); }
+    .rl { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: bold; }
+    .rs { font-size: 11px; color: var(--text2); width: 30px; text-align: right; }
+    
+    .sbar { width: 80px; height: 6px; background: var(--surface2); border-radius: 3px; display: inline-block; margin-right: 6px; overflow: hidden; vertical-align: middle; }
+    .sfill { height: 100%; border-radius: 3px; }
+
+    .dtable { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow); }
+    .dtable th, .dtable td { padding: 12px 16px; text-align: left; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+    .dtable th { background: var(--surface2); color: var(--text2); font-weight: 500; }
+    .dtable tr:hover td { background: var(--surface2); }
+    
+    .popup { position: fixed; background: var(--surface); border: 1px solid var(--border2); border-radius: var(--r-md); padding: 16px; box-shadow: var(--shadow); width: 280px; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    .popup.show { opacity: 1; pointer-events: auto; }
+    .pop-title { font-weight: bold; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .pop-row { display: flex; margin-bottom: 4px; font-size: 12px; }
+    .pop-k { width: 60px; color: var(--text3); }
+    .pop-v { flex: 1; font-weight: 500; }
+
+    .search-inp { width: 100%; padding: 12px 16px; border: 1px solid var(--border2); border-radius: var(--r-md); font-size: 15px; background: var(--surface); color: var(--text); outline: none; }
+    .search-inp:focus { border-color: var(--accent); }
+    .chip { display: inline-block; padding: 6px 12px; background: var(--surface2); border-radius: 16px; font-size: 12px; cursor: pointer; margin: 4px; color: var(--text2); }
+    .chip:hover { background: var(--border); }
+    
+    .sr-card { background: var(--surface); border: 0.5px solid var(--border); padding: 16px; border-radius: var(--r-md); margin-bottom: 12px; }
+    
+    .dict-row { display: flex; align-items: center; padding: 12px; border-bottom: 0.5px solid var(--border); }
+    .dr-from { background: var(--danger-bg); color: var(--danger-text); padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; width: 100px; text-align: center; }
+    .dr-mid { margin: 0 16px; color: var(--text3); }
+    .dr-to { background: var(--success-bg); color: var(--success-text); padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; flex: 1; }
+
+    .arch-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-md); margin-bottom: 8px; transition: 0.2s; }
+    .arch-name { font-weight: bold; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    .arch-meta { font-size: 11px; color: var(--text3); }
+
+    .ver-alert { background: var(--warn-bg); color: var(--warn-text); padding: 8px 12px; border-radius: 4px; font-size: 12px; margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+    
+    .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: var(--r-md); border: 1px solid; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; box-shadow: var(--shadow); z-index: 1000; transform: translateY(100px); opacity: 0; transition: 0.3s; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    .metric { background: var(--surface); border: 0.5px solid var(--border); padding: 20px; border-radius: var(--r-lg); box-shadow: var(--shadow); }
+    .metric-lbl { font-size: 12px; color: var(--text3); margin-bottom: 8px; }
+    .metric-val { font-size: 24px; font-weight: bold; color: var(--accent2); margin-bottom: 4px; }
+    .metric-sub { font-size: 11px; color: var(--text2); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- 사이드바 -->
+    <div class="sidebar">
+      <div class="logo">
+        <div class="logo-mark"><i class="ti ti-file-check"></i></div>
+        <div>
+          <div class="logo-text">Dowple</div>
+          <div class="logo-sub">문서 지능 관리 시스템</div>
+        </div>
+      </div>
+
+      <div class="sb-section">메뉴</div>
+      <div class="sb-item active" onclick="goTab('upload'); setNav(this)">
+        <i class="ti ti-upload"></i> 문서 업로드
+      </div>
+      <div class="sb-item" onclick="goTab('docs'); setNav(this)">
+        <i class="ti ti-files"></i> 문서 보관함
+      </div>
+      <div class="sb-item" onclick="goTab('search'); setNav(this)">
+        <i class="ti ti-search"></i> 자연어 검색
+      </div>
+      <div class="sb-item" onclick="goTab('dict'); setNav(this)">
+        <i class="ti ti-book"></i> 용어 사전
+      </div>
+      <div class="sb-item" onclick="goTab('archive'); setNav(this)">
+        <i class="ti ti-archive"></i> 아카이브
+      </div>
+
+      <div class="sb-section">폴더 구조</div>
+      <div class="sb-folder" onclick="goFolder(0)">
+        <span><i class="ti ti-folder"></i>재무/회계</span>
+        <span class="fb" id="fb0">0</span>
+      </div>
+      <div class="sb-folder" onclick="goFolder(1)">
+        <span><i class="ti ti-folder"></i>인사/총무</span>
+        <span class="fb" id="fb1">0</span>
+      </div>
+      <div class="sb-folder" onclick="goFolder(2)">
+        <span><i class="ti ti-folder"></i>기술개발</span>
+        <span class="fb" id="fb2">0</span>
+      </div>
+      <div class="sb-folder" onclick="goFolder(3)">
+        <span><i class="ti ti-folder"></i>마케팅/영업</span>
+        <span class="fb" id="fb3">0</span>
+      </div>
+      <div class="sb-folder" onclick="goFolder(4)">
+        <span><i class="ti ti-folder"></i>미분류</span>
+        <span class="fb" id="fb4">0</span>
+      </div>
+
+      <div class="stat-row">
+        <div class="status-dot dot-g"></div>OCR 엔진 정상
+      </div>
+    </div>
+
+    <!-- 메인 영역 -->
+    <div class="main">
+      <div class="topbar">
+        <div class="topbar-title">Dowple 대시보드</div>
+        <div>
+          <button class="btn"><i class="ti ti-bell"></i> 알림</button>
+          <button class="btn btn-primary"><i class="ti ti-user"></i> 프로필</button>
+        </div>
+      </div>
+      
+      <div class="content">
+        <!-- 업로드 탭 -->
+        <div id="tab-upload" class="panel active">
+          <div class="tabs">
+            <div class="tab active" onclick="subTab('sub-upload', this)">업로드 및 분류</div>
+            <div class="tab" onclick="subTab('sub-pipeline', this)">파이프라인 현황</div>
+          </div>
+          
+          <div id="sub-upload" class="panel active">
+            <!-- 업로드 영역 -->
+            <div class="drop-zone" id="dz"
+              onclick="document.getElementById('fi').click()"
+              ondragover="doDrag(event, true)"
+              ondragleave="doDrag(event, false)"
+              ondrop="doDrop(event)">
+              <i class="ti ti-cloud-upload"></i>
+              <p>파일을 드래그하거나 클릭하여 업로드</p>
+              <span>PDF, HWP, DOCX, 이미지(PNG/JPG), 음성(MP3) 지원</span>
+            </div>
+            
+            <input type="file" id="fi" style="display:none"
+              multiple
+              accept=".pdf,.hwp,.docx,.png,.jpg,.jpeg,.mp3,.m4a"
+              onchange="handleFiles(this.files)">
+            
+            <div id="procArea"></div>
+          </div>
+
+          <div id="sub-pipeline" class="panel">
+            <!-- 파이프라인 현황 -->
+            <div class="g4">
+              <div class="metric">
+                <div class="metric-lbl">총 처리 문서</div>
+                <div class="metric-val" id="st0">0</div>
+                <div class="metric-sub">누적</div>
+              </div>
+              <div class="metric">
+                <div class="metric-lbl">분류 성공률</div>
+                <div class="metric-val" id="st1">0%</div>
+                <div class="metric-sub">Top 1 기준</div>
+              </div>
+              <div class="metric">
+                <div class="metric-lbl">평균 처리 속도</div>
+                <div class="metric-val" id="st2">0초</div>
+                <div class="metric-sub">문서당</div>
+              </div>
+              <div class="metric">
+                <div class="metric-lbl">OCR/STT 변환 건수</div>
+                <div class="metric-val" id="st3">0</div>
+                <div class="metric-sub">하이브리드 엔진</div>
+              </div>
+            </div>
+            <br>
+            <div class="card">
+              <div class="card-hdr">
+                <div class="card-title">파이프라인 프로세스 개요</div>
+              </div>
+              <div class="phase-row">
+                <div class="phase-num done"><i class="ti ti-check" style="font-size:12px"></i></div>
+                <div style="flex:1">
+                  <div class="phase-label">1 — 병렬 전처리 (핵심 구역 파싱)</div>
+                  <div class="phase-desc">표지·헤더·목차·결론부 추출 → 4,500자 증거 패키지 (PyMuPDF / EasyOCR / Whisper STT)</div>
+                  <div class="pbar"><div class="pfill" style="width:100%"></div></div>
+                </div>
+              </div>
+              <div class="phase-row">
+                <div class="phase-num done"><i class="ti ti-check" style="font-size:12px"></i></div>
+                <div style="flex:1">
+                  <div class="phase-label">2 — 용어 정규화 (Dictionary Mapping)</div>
+                  <div class="phase-desc">은어, 줄임말, 현업 용어를 표준 분류어로 매핑 (예: "찐최종" → "최종본")</div>
+                  <div class="pbar"><div class="pfill" style="width:100%"></div></div>
+                </div>
+              </div>
+              <div class="phase-row">
+                <div class="phase-num done"><i class="ti ti-check" style="font-size:12px"></i></div>
+                <div style="flex:1">
+                  <div class="phase-label">3 — 하이브리드 분류 (Rule + 유사도 스코어링)</div>
+                  <div class="phase-desc">Top 3 폴더 추천, 버전 감지 및 AI 요약 생성</div>
+                  <div class="pbar"><div class="pfill" style="width:100%"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 문서 보관함 탭 -->
+        <div id="tab-docs" class="panel">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h2 style="margin:0; font-size:18px;">문서 보관함</h2>
+            <select id="catF" onchange="curFilt=this.value; renderDocs();" style="padding:6px 12px; border-radius:4px; border:1px solid var(--border);">
+              <option value="">전체 폴더</option>
+              <option value="재무/회계">재무/회계</option>
+              <option value="인사/총무">인사/총무</option>
+              <option value="기술개발">기술개발</option>
+              <option value="마케팅/영업">마케팅/영업</option>
+              <option value="미분류">미분류</option>
+            </select>
+          </div>
+          <table class="dtable">
+            <thead>
+              <tr>
+                <th>파일명</th>
+                <th>분류 폴더</th>
+                <th>추출 엔진</th>
+                <th>저장일</th>
+                <th>상태</th>
+                <th>관리</th>
+              </tr>
+            </thead>
+            <tbody id="docsTb"></tbody>
+          </table>
+        </div>
+
+        <!-- 자연어 검색 탭 -->
+        <div id="tab-search" class="panel">
+          <h2 style="margin:0 0 16px; font-size:18px;">자연어 기반 검색</h2>
+          <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <input type="text" id="sInput" class="search-inp" placeholder="예: 2024년 1분기 결산안 찾아줘" onkeydown="if(event.key==='Enter') doSearch()">
+            <button class="btn btn-primary" onclick="doSearch()"><i class="ti ti-search"></i> 검색</button>
+          </div>
+          <div style="margin-bottom:24px;">
+            <span style="font-size:12px; color:var(--text3); margin-right:8px;">추천 검색어:</span>
+            <span class="chip" onclick="qSearch('2024 결산안')">#2024 결산안</span>
+            <span class="chip" onclick="qSearch('Q3 마케팅')">#Q3 마케팅</span>
+            <span class="chip" onclick="qSearch('찐최종')">#찐최종</span>
+          </div>
+          <div id="sResults"></div>
+        </div>
+
+        <!-- 용어 사전 탭 -->
+        <div id="tab-dict" class="panel">
+          <h2 style="margin:0 0 16px; font-size:18px;">현업 용어 매핑 사전</h2>
+          <div class="card" style="margin-bottom:20px;">
+            <div style="display:flex; gap:12px; align-items:center;">
+              <input type="text" id="dFrom" class="search-inp" placeholder="현업 용어/은어 (예: 찐최종)" style="flex:1">
+              <i class="ti ti-arrow-right" style="color:var(--text3)"></i>
+              <input type="text" id="dTo" class="search-inp" placeholder="표준 분류어 (예: 최종본)" style="flex:1">
+              <button class="btn btn-primary" onclick="addDict()"><i class="ti ti-plus"></i> 추가</button>
+            </div>
+          </div>
+          <div class="card">
+            <div id="dictRows"></div>
+          </div>
+        </div>
+
+        <!-- 아카이브 탭 -->
+        <div id="tab-archive" class="panel">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h2 style="margin:0; font-size:18px;">아카이빙 제안 (90일 이상 미열람)</h2>
+            <button class="btn btn-primary" onclick="archAll()"><i class="ti ti-archive"></i> 전체 아카이브 이동</button>
+          </div>
+          <div id="archList"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 및 팝업 -->
+  <div id="toast" class="toast"></div>
+  <div id="docPop2" class="popup"></div>
+
+  <script>
+    // 전역 데이터 설정
+    var DB = [];
+    var STATS = { total: 0, succ: 0, ocr: 0, times: [] };
+    var DICT = {
+      "찐최종": "최종본", "결산안": "재무제표", "영수증": "회계",
+      "기획안": "사업기획", "회계자료": "재무/회계", "인력관리": "인사/총무",
+      "개발보고": "기술개발", "마케팅자료": "마케팅/영업", "부가세": "부가가치세",
+      "MOU": "업무협약서"
+    };
+    var FOLDERS = ["재무/회계", "인사/총무", "기술개발", "마케팅/영업", "미분류"];
+    var FBADGE = ["b-info", "b-warn", "b-success", "b-danger", ""];
+    var RMAP = {
+      "재무": 0, "회계": 0, "부가세": 0, "재무제표": 0, "세금": 0, "영수증": 0,
+      "인사": 1, "총무": 1, "채용": 1, "급여": 1, "인력": 1,
+      "개발": 2, "기술": 2, "연구": 2,
+      "마케팅": 3, "영업": 3, "광고": 3, "제안": 3
+    };
+    var curFilt = "";
+
+    // 네비게이션 및 탭 스위치
+    function goTab(id) {
+      document.querySelectorAll('.panel[id^="tab-"]').forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-' + id).classList.add('active');
+      if (id === 'docs') renderDocs();
+      if (id === 'archive') renderArch();
+    }
+
+    function setNav(el) {
+      document.querySelectorAll('.sb-item').forEach(x => x.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function setNavByIdx(i) {
+      var items = document.querySelectorAll('.sb-item');
+      items.forEach(x => x.classList.remove('active'));
+      items[i].classList.add('active');
+    }
+
+    function goFolder(i) {
+      curFilt = FOLDERS[i];
+      document.getElementById('catF').value = FOLDERS[i];
+      goTab('docs');
+      setNavByIdx(1);
+    }
+
+    function subTab(id, el) {
+      var parent = el.closest('.panel[id^="tab-"]');
+      parent.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      el.closest('.tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function toast(msg, type) {
+      var t = document.getElementById('toast');
+      type = type || 'success';
+      t.style.background = 'var(--' + type + '-bg)';
+      t.style.color = 'var(--' + type + '-text)';
+      t.style.borderColor = 'var(--' + type + '-border)';
+      t.innerHTML = '<i class="ti ti-check"></i> ' + msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2600);
+    }
+
+    // 파일 업로드 처리 파이프라인
+    function doDrag(e, on) {
+      e.preventDefault();
+      document.getElementById('dz').className = 'drop-zone' + (on ? ' drag' : '');
+    }
+    function doDrop(e) {
+      e.preventDefault();
+      doDrag(e, false);
+      handleFiles(e.dataTransfer.files);
+    }
+    function handleFiles(files) {
+      Array.from(files).forEach(processFile);
+    }
+
+    function processFile(file) {
+      var area = document.getElementById('procArea');
+      var id = 'p' + Date.now() + Math.random().toString(36).slice(2, 6);
+      var isImg = file.type.startsWith('image/');
+      var isAu = file.type.startsWith('audio/');
+
+      var wrap = document.createElement('div');
+      wrap.className = 'card';
+      wrap.id = id;
+      wrap.innerHTML = `
+        <div class="card-hdr">
+          <div class="card-title"><i class="ti ti-file-text"></i> ${file.name}</div>
+          <span class="badge b-info" id="${id}-badge">처리중</span>
+        </div>
+        <div id="${id}-phases">
+          <div class="phase-row">
+            <div class="phase-num running" id="${id}-p1">1</div>
+            <div style="flex:1">
+              <div class="phase-label">병렬 전처리 — 핵심 구역 파싱</div>
+              <div class="phase-desc">${isImg ? 'EasyOCR 하이브리드 처리' : isAu ? 'Whisper STT 음성 변환' : 'PyMuPDF 병렬 구역 파싱'}</div>
+              <div class="pbar"><div class="pfill" id="${id}-b1" style="width:0%"></div></div>
+            </div>
+          </div>
+          <div class="phase-row">
+            <div class="phase-num" id="${id}-p2">2</div>
+            <div style="flex:1">
+              <div class="phase-label">용어 정규화</div>
+              <div class="phase-desc">사전 기반 은어 및 현업 용어 매핑</div>
+              <div class="pbar"><div class="pfill" id="${id}-b2" style="width:0%"></div></div>
+            </div>
+          </div>
+          <div class="phase-row">
+            <div class="phase-num" id="${id}-p3">3</div>
+            <div style="flex:1">
+              <div class="phase-label">하이브리드 분류</div>
+              <div class="phase-desc">AI 유사도 기반 카테고리 추천</div>
+              <div class="pbar"><div class="pfill" id="${id}-b3" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+        <div id="${id}-res" style="display:none"></div>`;
+
+      area.prepend(wrap);
+
+      var t0 = Date.now();
+      anim(id, 'b1', 900, () => {
+        mark(id, 'p1', 'done');
+        mark(id, 'p2', 'running');
+        var ev = buildEv(file.name, isImg, isAu);
+
+        anim(id, 'b2', 600, () => {
+          mark(id, 'p2', 'done');
+          mark(id, 'p3', 'running');
+          var norm = doNorm(file.name + ' ' + ev);
+          var found = getFound(file.name);
+
+          anim(id, 'b3', 800, () => {
+            mark(id, 'p3', 'done');
+            var recs = classify(norm, file.name);
+            var verMsg = checkVer(file.name);
+            var elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+
+            STATS.times.push(parseFloat(elapsed));
+            if (isImg || isAu) STATS.ocr++;
+            updStats();
+            showRes(id, file, recs, verMsg, ev, found, isImg, isAu, elapsed);
+          });
+        });
+      });
+    }
+
+    function anim(id, barId, duration, callback) {
+      var el = document.getElementById(id + '-' + barId);
+      if (!el) { if (callback) callback(); return; }
+      var startTime = null;
+      (function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        var progress = Math.min((timestamp - startTime) / duration, 1);
+        el.style.width = (progress * 100) + '%';
+        if (progress < 1) requestAnimationFrame(step);
+        else if (callback) callback();
+      })(performance.now());
+    }
+
+    function mark(id, phaseId, cls) {
+      var el = document.getElementById(id + '-' + phaseId);
+      if (!el) return;
+      el.className = 'phase-num ' + (cls === 'done' ? 'done' : cls === 'running' ? 'running' : '');
+      if (cls === 'done') el.innerHTML = '<i class="ti ti-check" style="font-size:12px"></i>';
+      if (cls === 'running') el.innerHTML = phaseId.replace(id + '-p', '');
+    }
+
+    // AI 분류 로직
+    function buildEv(name, isImg, isAu) {
+      var n = name.toLowerCase();
+      if (isImg) return '[OCR] 표지 상단 30% 추출: "2024년 스캔 문서 — 업무보고서"';
+      if (isAu) return '[STT] "오늘 회의에서는 3분기 마케팅 예산안 및 매출 전략에 대해..."';
+      if (n.includes('재무') || n.includes('결산') || n.includes('세금'))
+        return '표지: "2024 재무결산 보고서" / 목차: 손익계산서, 부가세 신고 / 결론: 전년比 +15%';
+      if (n.includes('인사') || n.includes('채용'))
+        return '표지: "2024 하반기 공개채용 지원서" / 항목: 자기소개서, 경력기술서';
+      if (n.includes('마케팅') || n.includes('영업'))
+        return '표지: "Q3 마케팅 전략 제안서" / 목차: 시장분석, 캠페인 / 결론: ROI 220%';
+      if (n.includes('개발') || n.includes('기술'))
+        return '표지: "기술개발 현황 보고" / 목차: 스프린트 결과, 로드맵';
+      return '표지: "' + name + '" / 키워드: 보고서, 문서, 2024년 업무';
+    }
+
+    function doNorm(text) {
+      var t = text;
+      Object.keys(DICT).forEach(k => { t = t.split(k).join(DICT[k]); });
+      return t;
+    }
+
+    function getFound(name) {
+      var found = [];
+      var n = name.toLowerCase();
+      Object.keys(DICT).forEach(k => {
+        if (n.includes(k.toLowerCase())) found.push(DICT[k]);
+      });
+      return found;
+    }
+
+    function classify(text, fname) {
+      var t = text.toLowerCase();
+      var scores = [0, 0, 0, 0, 0];
+      Object.keys(RMAP).forEach(k => {
+        if (t.includes(k)) scores[RMAP[k]] += 18;
+      });
+      scores = scores.map(s => s + Math.floor(Math.random() * 5));
+      var sorted = scores.map((s, i) => ({ i, s })).sort((a, b) => b.s - a.s).slice(0, 3);
+      var base = sorted[0].s || 30;
+      var recs = [
+        { folder: FOLDERS[sorted[0].i], score: Math.min(95, base + Math.floor(Math.random() * 8)) },
+        { folder: FOLDERS[sorted[1].i], score: Math.max(30, base - 20 + Math.floor(Math.random() * 6)) },
+        { folder: FOLDERS[sorted[2].i], score: Math.max(12, base - 38 + Math.floor(Math.random() * 6)) }
+      ];
+      var noisy = ['최종', '진짜최종', '수정본', 'v2', 'tmp'].some(x => fname.toLowerCase().includes(x));
+      if (recs[0].score < 40 && noisy) {
+        recs[0].folder = '미분류';
+        recs[0].score = 45;
+      }
+      return recs;
+    }
+
+    function checkVer(fname) {
+      var patterns = ['v2', 'v3', '_수정', '_최종', '최종본', '진짜최종'];
+      return patterns.some(x => fname.toLowerCase().includes(x))
+        ? '동일 폴더 내 유사 문서 발견 — 기존 파일의 수정본으로 저장하시겠습니까? (유사도 87%)'
+        : null;
+    }
+
+    function buildSum(name, folder, found) {
+      if (folder.includes('재무')) return name + '은 재무·회계 관련 문서입니다. 전년 대비 매출 현황이 결론부에 포함되어 있습니다.' + (found.length ? ' 정규화: ' + found.join(', ') : '');
+      if (folder.includes('인사')) return name + '은 인사·채용 관련 문서입니다. 지원자 정보 및 채용 기준이 포함됩니다.';
+      if (folder.includes('마케팅')) return name + '은 마케팅·영업 제안 문서입니다. 캠페인 전략 및 ROI 분석이 포함됩니다.';
+      if (folder.includes('기술')) return name + '은 기술개발 보고 문서입니다. 스프린트 현황 및 다음 로드맵이 기술됩니다.';
+      return name + '은 업로드된 문서입니다. AI가 내용을 분석하여 분류를 추천했습니다.';
+    }
+
+    function showRes(id, file, recs, verMsg, ev, found, isImg, isAu, elapsed) {
+      var card = document.getElementById(id); if (!card) return;
+      var badge = document.getElementById(id + '-badge');
+      badge.className = 'badge b-success';
+      badge.textContent = '완료 (' + elapsed + '초)';
+      var summary = buildSum(file.name, recs[0].folder, found);
+      var em = isImg ? 'OCR 하이브리드' : isAu ? 'STT 변환' : '텍스트 파싱';
+      var res = document.getElementById(id + '-res');
+      res.style.display = 'block';
+      res.innerHTML = `
+        <div style="border-top:0.5px solid var(--border); margin-top:12px; padding-top:14px">
+          <div class="g2" style="gap:16px">
+            <div>
+              <div class="evidence">${ev}</div>
+              ${found.length ? `<div>정규화 용어: ${found.join(', ')}</div>` : ''}
+              <div style="font-size:13px; margin-top:8px;">AI 요약: ${summary}</div>
+              ${verMsg ? `<div class="ver-alert"><i class="ti ti-alert-triangle"></i>${verMsg}</div>` : ''}
+            </div>
+            <div>
+              <div id="${id}-recs">
+                ${recs.map((r, i) => `
+                  <div class="rec-item ${i === 0 ? 'sel' : ''}" onclick="selRec('${id}', ${i})" id="${id}-r${i}">
+                    <div class="rl"><i class="ti ti-folder"></i>${r.folder}</div>
+                    <div>
+                      <div class="sbar"><div class="sfill" style="width:${r.score}%; background:${i===0 ? 'var(--accent)' : i===1 ? '#BA7517' : '#888'}"></div></div>
+                      <span class="rs">${r.score}%</span>
+                    </div>
+                  </div>`).join('')}
+              </div>
+              <button class="btn btn-primary" onclick="saveDoc('${id}','${file.name}','${em}','${summary}')" style="width:100%; justify-content:center; margin-top:8px;">
+                <i class="ti ti-check"></i> 확인 및 저장
+              </button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function selRec(id, idx) {
+      for (var i = 0; i < 3; i++) {
+        var el = document.getElementById(id + '-r' + i);
+        if (el) el.classList.toggle('sel', i === idx);
+      }
+    }
+
+    function saveDoc(id, fname, em, summary) {
+      var sel = document.querySelector('#' + id + '-recs .rec-item.sel');
+      if (!sel) { toast('분류를 선택해주세요', 'warn'); return; }
+      var folder = sel.querySelector('.rl').textContent.trim();
+      var today = new Date().toISOString().slice(0, 10);
+      DB.push({ filename: fname, category: folder, summary: summary, date: today, status: '정상', extraction: em });
+      STATS.total++;
+      STATS.succ++;
+      updFolders();
+      updStats();
+      var card = document.getElementById(id);
+      if (card) {
+        card.style.opacity = '0.4';
+        setTimeout(() => { if (card.parentNode) card.parentNode.removeChild(card); }, 700);
+      }
+      toast(fname + ' 저장 완료!');
+    }
+
+    // 문서 보관함 및 팝업
+    function renderDocs() {
+      var filt = document.getElementById('catF').value;
+      var rows = DB.filter(d => !filt || d.category === filt);
+      var tb = document.getElementById('docsTb');
+      if (!tb) return;
+      if (!rows.length) {
+        tb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--text3)">저장된 문서가 없습니다.</td></tr>';
+        return;
+      }
+      tb.innerHTML = rows.map((d, i) => `
+        <tr>
+          <td style="color:var(--info-text); cursor:pointer;" onmouseenter="showPop(event, ${i}, '${filt}')" onmouseleave="hidePop()">
+            <i class="ti ti-file-text"></i> ${d.filename}
+          </td>
+          <td><span class="badge ${FBADGE[FOLDERS.indexOf(d.category)] || ''}">${d.category}</span></td>
+          <td style="color:var(--text3)">${d.extraction}</td>
+          <td style="color:var(--text3)">${d.date}</td>
+          <td><span class="badge b-success">${d.status}</span></td>
+          <td><button class="btn" onclick="delDoc(${i}, '${filt}')"><i class="ti ti-trash"></i></button></td>
+        </tr>`).join('');
+    }
+
+    function showPop(e, idx, filt) {
+      var rows = DB.filter(d => !filt || d.category === filt);
+      var d = rows[idx]; if (!d) return;
+      var p = document.getElementById('docPop2');
+      p.innerHTML = `
+        <div class="pop-title"><i class="ti ti-eye"></i> 팝업 뷰어</div>
+        <div class="pop-row"><span class="pop-k">파일명</span><span class="pop-v">${d.filename}</span></div>
+        <div class="pop-row"><span class="pop-k">분류</span><span class="pop-v">${d.category}</span></div>
+        <div class="pop-row"><span class="pop-k">저장일</span><span class="pop-v">${d.date}</span></div>
+        <div class="pop-row"><span class="pop-k">상태</span><span class="pop-v">${d.status}</span></div>
+        <div style="border-top:0.5px solid var(--border); margin-top:7px; padding-top:7px; font-size:11px; color:var(--text3); line-height:1.5">${d.summary}</div>`;
+      p.style.left = (e.clientX + 12) + 'px';
+      p.style.top = Math.min(e.clientY - 20, window.innerHeight - 220) + 'px';
+      p.classList.add('show');
+    }
+
+    function hidePop() { document.getElementById('docPop2').classList.remove('show'); }
+
+    function delDoc(idx, filt) {
+      var rows = DB.map((d, i) => ({ d, i })).filter(x => !filt || x.d.category === filt);
+      if (rows[idx]) DB.splice(rows[idx].i, 1);
+      updFolders();
+      renderDocs();
+      toast('문서가 삭제되었습니다.', 'warn');
+    }
+
+    function updFolders() {
+      var counts = [0, 0, 0, 0, 0];
+      DB.forEach(d => {
+        var i = FOLDERS.indexOf(d.category);
+        if (i >= 0) counts[i]++;
+      });
+      counts.forEach((v, i) => {
+        var el = document.getElementById('fb' + i);
+        if (el) el.textContent = v;
+      });
+    }
+
+    function updStats() {
+      document.getElementById('st0').textContent = STATS.total;
+      document.getElementById('st3').textContent = STATS.ocr;
+      if (STATS.total > 0) {
+        document.getElementById('st1').textContent = Math.round(STATS.succ / STATS.total * 100) + '%';
+      }
+      if (STATS.times.length > 0) {
+        var avg = STATS.times.reduce((a, b) => a + b) / STATS.times.length;
+        document.getElementById('st2').textContent = avg.toFixed(1) + '초';
+      }
+    }
+
+    // 자연어 검색
+    function doSearch() {
+      var q = document.getElementById('sInput').value.trim();
+      if (!q) return;
+      var norm = doNorm(q.toLowerCase());
+      var scored = DB.map(d => {
+        var t = doNorm((d.filename + ' ' + d.category + ' ' + d.summary).toLowerCase());
+        var sc = 0;
+        norm.split(' ').forEach(w => { if (w && t.includes(w)) sc += 20; });
+        q.toLowerCase().split(' ').forEach(w => { if (w && t.includes(w)) sc += 10; });
+        return { d, sc };
+      }).filter(x => x.sc > 0).sort((a, b) => b.sc - a.sc);
+      renderSearchResults(q, scored);
+    }
+
+    function qSearch(q) {
+      document.getElementById('sInput').value = q;
+      doSearch();
+    }
+
+    function renderSearchResults(q, scored) {
+      var el = document.getElementById('sResults');
+      if (!scored.length) {
+        el.innerHTML = `<div style="text-align:center; padding:28px; color:var(--text3)"><i class="ti ti-search-off" style="font-size:28px; display:block; margin-bottom:8px"></i>"${q}"에 해당하는 문서를 찾지 못했습니다.</div>`;
+        return;
+      }
+      el.innerHTML = `<div style="font-size:11px; color:var(--text3); margin-bottom:10px">"${q}" 검색 결과 ${scored.length}건 — 메타데이터 1차 검색 적용</div>` +
+        scored.map(({ d, sc }) => `
+          <div class="sr-card">
+            <div style="display:flex; justify-content:space-between">
+              <div style="font-size:13px; font-weight:500"><i class="ti ti-file-text"></i> ${d.filename}</div>
+              <span class="badge b-info">관련도 ${Math.min(99, sc)}%</span>
+            </div>
+            <div style="font-size:11px; color:var(--text3); margin-top:4px">
+              <span class="badge ${FBADGE[FOLDERS.indexOf(d.category)] || ''}">${d.category}</span>
+              ${d.date} · ${d.extraction}
+            </div>
+            <div style="font-size:11px; color:var(--success-text); margin-top:5px">
+              <i class="ti ti-sparkles"></i> ${d.summary.slice(0, 90)}...
+            </div>
+          </div>`).join('');
+    }
+
+    // 용어 사전
+    function renderDict() {
+      var el = document.getElementById('dictRows');
+      if (!el) return;
+      el.innerHTML = Object.keys(DICT).map(k => `
+        <div class="dict-row">
+          <span class="dr-from">${k}</span>
+          <span class="dr-mid"> → </span>
+          <span class="dr-to">${DICT[k]}</span>
+        </div>`).join('');
+    }
+
+    function addDict() {
+      var from = document.getElementById('dFrom').value.trim();
+      var to = document.getElementById('dTo').value.trim();
+      if (!from || !to) { toast('두 항목 모두 입력해주세요', 'warn'); return; }
+      DICT[from] = to;
+      renderDict();
+      document.getElementById('dFrom').value = '';
+      document.getElementById('dTo').value = '';
+      toast('용어 추가: ' + from + ' → ' + to);
+    }
+
+    // 아카이브
+    function renderArch() {
+      var el = document.getElementById('archList');
+      if (!el) return;
+      if (!DB.length) {
+        el.innerHTML = '<div style="text-align:center; padding:28px; color:var(--text3)">아카이빙 제안 대상이 없습니다.</div>';
+        return;
+      }
+      el.innerHTML = DB.map((d, i) => `
+        <div class="arch-row" id="ar${i}">
+          <div>
+            <div class="arch-name"><i class="ti ti-file-text"></i> ${d.filename}</div>
+            <div class="arch-meta">${d.category} · ${d.date} · 90일 이상 미열람 추정</div>
+          </div>
+          <button class="btn" onclick="archOne(${i})"><i class="ti ti-archive"></i> 이동</button>
+        </div>`).join('');
+    }
+
+    function archOne(i) {
+      var el = document.getElementById('ar' + i);
+      if (el) {
+        el.style.opacity = '0.3';
+        el.querySelector('button').disabled = true;
+      }
+      toast('아카이브로 이동되었습니다');
+    }
+
+    function archAll() {
+      document.querySelectorAll('[id^="ar"]').forEach(el => {
+        el.style.opacity = '0.3';
+        var b = el.querySelector('button');
+        if (b) b.disabled = true;
+      });
+      toast('전체 문서가 아카이브로 이동되었습니다');
+    }
+
+    // 초기화 로직
+    renderDict();
+    setTimeout(() => {
+      DB.push({
+        filename: '2024_재무결산보고서.pdf',
+        category: '재무/회계',
+        summary: '2024 상반기 재무 결산 보고서. 전년 대비 매출 15% 성장, 부가가치세 신고 현황 포함.',
+        date: '2024-04-10',
+        status: '정상',
+        extraction: '텍스트 파싱'
+      });
+      DB.push({
+        filename: 'Q3_마케팅전략_최종.docx',
+        category: '마케팅/영업',
+        summary: 'Q3 마케팅 전략 제안서. 캠페인 기획 및 ROI 분석 포함. 버전 2.0.',
+        date: '2024-03-22',
+        status: '정상',
+        extraction: '텍스트 파싱'
+      });
+      STATS.total = 2;
+      STATS.succ = 2;
+      STATS.times = [2.1, 3.4];
+      updFolders();
+      updStats();
+    }, 100);
+  </script>
+</body>
+</html>
