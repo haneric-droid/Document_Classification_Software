@@ -1,0 +1,21 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "backend/**",
+      "*.md",
+      "*.bat",
+      "*.db",
+      "uploads/**",
+      ".venv/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/",
+        "destination": "/dowple_dms.html"
+      }
+    ]
+  }
+}
