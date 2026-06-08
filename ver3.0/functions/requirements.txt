@@ -1,0 +1,6 @@
+firebase-functions
+firebase-admin
+pymupdf
+python-docx
+python-pptx
+openpyxl

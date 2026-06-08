@@ -1,0 +1,33 @@
+name: Deploy to Firebase
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'ver3.0/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Install Python dependencies for Functions
+        run: |
+          cd ver3.0/functions
+          pip install -r requirements.txt
+
+      - name: Deploy to Firebase (Hosting + Functions)
+        run: |
+          cd ver3.0
+          firebase deploy --only hosting,functions --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive
