@@ -374,16 +374,18 @@ def analyze_content(filename: str, file_type: str, content: bytes) -> dict:
 
 
 # ── Cloud Function ─────────────────────────────────────────────────────
-@https_fn.on_request(
-    cors=https_fn.options.CorsOptions(cors_origins="*", cors_methods=["POST", "OPTIONS"]),
-    memory=512,
-    timeout_sec=60,
-)
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+}
+
+@https_fn.on_request()
 def analyze(req: https_fn.Request) -> https_fn.Response:
     if req.method == "OPTIONS":
-        return https_fn.Response("", status=204)
+        return https_fn.Response("", status=204, headers=CORS_HEADERS)
     if req.method != "POST":
-        return https_fn.Response("Method not allowed", status=405)
+        return https_fn.Response("Method not allowed", status=405, headers=CORS_HEADERS)
 
     start = time.perf_counter()
     try:
@@ -413,11 +415,11 @@ def analyze(req: https_fn.Request) -> https_fn.Response:
             "processing_time_sec": round(time.perf_counter() - start, 2),
             "warning": result["warning"],
         }, ensure_ascii=False)
-        return https_fn.Response(body, status=200, content_type="application/json")
+        return https_fn.Response(body, status=200, content_type="application/json", headers=CORS_HEADERS)
 
     except Exception as e:
         import json
         return https_fn.Response(
             json.dumps({"ok": False, "warning": str(e)}, ensure_ascii=False),
-            status=500, content_type="application/json"
+            status=500, content_type="application/json", headers=CORS_HEADERS
         )
