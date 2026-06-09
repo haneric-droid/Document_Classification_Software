@@ -14,7 +14,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -22,10 +22,12 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: Install Python dependencies for Functions
+      - name: Create venv and install dependencies for Cloud Functions
         run: |
           cd ver3.0/functions
-          pip install -r requirements.txt
+          python3.12 -m venv venv
+          venv/bin/pip install --upgrade pip
+          venv/bin/pip install -r requirements.txt
 
       - name: Deploy to Firebase (Hosting + Functions)
         run: |
