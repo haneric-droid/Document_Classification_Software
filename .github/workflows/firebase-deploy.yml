@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - 'ver3.0/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
 
 jobs:
   deploy:
