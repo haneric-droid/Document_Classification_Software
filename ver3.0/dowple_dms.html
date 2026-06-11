@@ -6032,6 +6032,7 @@
         doc.backendSynced = true;
         doc.teamId = backendDoc.team_id || doc.teamId || getCurrentTeamId();
         doc.teamName = getTeamName(doc.teamId);
+        if (backendDoc.space_id) { doc.spaceId = backendDoc.space_id; doc.space_id = backendDoc.space_id; }
         doc.storedPath = backendDoc.stored_path || "";
         doc.fileHash = backendDoc.file_hash || "";
         if (backendDoc.version_of_id) {
@@ -9243,6 +9244,7 @@
         doc.backendSynced = true;
         doc.teamId = backendDoc.team_id || doc.teamId || getCurrentTeamId();
         doc.teamName = getTeamName(doc.teamId);
+        if (backendDoc.space_id) { doc.spaceId = backendDoc.space_id; doc.space_id = backendDoc.space_id; }
         doc.storedPath = backendDoc.stored_path || "";
         doc.fileHash = backendDoc.file_hash || "";
         if (backendDoc.version_of_id) {
@@ -9958,6 +9960,9 @@
       doc.team_id = teamId;
       doc.teamName = teamName;
       doc.team_name = teamName;
+      // 현재 스페이스에 귀속시켜 저장 직후 바로 해당 스페이스/폴더에 표시되게 한다
+      doc.spaceId = state.spaceId || "";
+      doc.space_id = state.spaceId || "";
       return doc;
     }
 
