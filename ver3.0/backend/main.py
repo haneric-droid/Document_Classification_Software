@@ -273,11 +273,23 @@ class UserTeam(Base):
     joined_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
+class Space(Base):
+    __tablename__ = "spaces"
+
+    id = Column(String(100), primary_key=True, index=True)
+    team_id = Column(String(100), ForeignKey("teams.id"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True, default="")
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class Document(Base):
     __tablename__ = "documents"
 
     id = Column(Integer, primary_key=True, index=True)
     team_id = Column(String(100), nullable=True, default=DEFAULT_TEAM_ID, index=True)
+    space_id = Column(String(100), ForeignKey("spaces.id"), nullable=True, index=True)
     filename = Column(String(255), nullable=False)
     file_type = Column(String(50), nullable=False, default="document")
     category = Column(String(255), nullable=True, default="")
@@ -300,6 +312,7 @@ class FolderRule(Base):
 
     id = Column(String(100), primary_key=True, index=True)
     team_id = Column(String(100), nullable=True, default=DEFAULT_TEAM_ID, index=True)
+    space_id = Column(String(100), ForeignKey("spaces.id"), nullable=True, index=True)
     folder_id = Column(String(100), nullable=True, index=True)
     name = Column(String(255), nullable=False)
     icon = Column(String(100), nullable=True, default="")
@@ -316,6 +329,7 @@ class ReviewQueue(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     team_id = Column(String(100), nullable=True, default=DEFAULT_TEAM_ID, index=True)
+    space_id = Column(String(100), ForeignKey("spaces.id"), nullable=True, index=True)
     document_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
     filename = Column(String(255), nullable=False)
     reason = Column(Text, nullable=True, default="")
@@ -408,7 +422,10 @@ def ensure_document_schema() -> None:
             conn.execute(text("ALTER TABLE documents ADD COLUMN version_of_id INTEGER"))
         if "team_id" not in columns:
             conn.execute(text("ALTER TABLE documents ADD COLUMN team_id VARCHAR(100) DEFAULT 'demo-team'"))
+        if "space_id" not in columns:
+            conn.execute(text("ALTER TABLE documents ADD COLUMN space_id VARCHAR(100)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_documents_team_id ON documents (team_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_documents_space_id ON documents (space_id)"))
         conn.execute(
             text("UPDATE documents SET team_id = :team_id WHERE team_id IS NULL OR team_id = ''"),
             {"team_id": DEFAULT_TEAM_ID},
@@ -426,8 +443,11 @@ def ensure_folder_rule_schema() -> None:
             conn.execute(text("ALTER TABLE folder_rules ADD COLUMN icon VARCHAR(100) DEFAULT ''"))
         if "reason" not in columns:
             conn.execute(text("ALTER TABLE folder_rules ADD COLUMN reason TEXT DEFAULT ''"))
+        if "space_id" not in columns:
+            conn.execute(text("ALTER TABLE folder_rules ADD COLUMN space_id VARCHAR(100)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_folder_rules_team_id ON folder_rules (team_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_folder_rules_folder_id ON folder_rules (folder_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_folder_rules_space_id ON folder_rules (space_id)"))
         for rule in DEFAULT_FOLDER_RULES:
             conn.execute(
                 text(
@@ -466,8 +486,11 @@ def ensure_review_queue_schema() -> None:
             conn.execute(text("ALTER TABLE review_queue ADD COLUMN resolved_at DATETIME"))
         if "updated_at" not in columns:
             conn.execute(text("ALTER TABLE review_queue ADD COLUMN updated_at DATETIME"))
+        if "space_id" not in columns:
+            conn.execute(text("ALTER TABLE review_queue ADD COLUMN space_id VARCHAR(100)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_review_queue_team_id ON review_queue (team_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_review_queue_status ON review_queue (status)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_review_queue_space_id ON review_queue (space_id)"))
         conn.execute(
             text("UPDATE review_queue SET team_id = :team_id WHERE team_id IS NULL OR team_id = ''"),
             {"team_id": DEFAULT_TEAM_ID},
@@ -521,6 +544,15 @@ def default_folder_rule_payload(rule: dict, team_id: str) -> dict:
         "reason": rule.get("reason", ""),
         "updated_at": datetime.utcnow(),
     }
+
+
+def create_default_space(db: Session, team_id: str) -> Space:
+    """팀에 기본 스페이스 생성"""
+    space_id = f"space-{uuid.uuid4().hex[:12]}"
+    space = Space(id=space_id, team_id=team_id, name="기본 스페이스", description="")
+    db.add(space)
+    db.flush()
+    return space
 
 
 def apply_folder_rule_payload(rule: FolderRule, payload: dict) -> None:
@@ -655,14 +687,14 @@ def check_team_access(team_id: str, user_id: int, db: Session):
     normalized = normalize_team_id(team_id)
     if normalized == "demo-team":
         return
-    # 개인 스페이스: personal-{user_id} 형식이면 본인인지만 확인
+    # 개인 팀: personal-{user_id} 형식이면 본인인지만 확인
     if normalized.startswith("personal-"):
         try:
             owner_id = int(normalized.split("-", 1)[1])
             if owner_id != user_id:
-                raise HTTPException(status_code=403, detail="본인의 개인 스페이스에만 접근할 수 있습니다.")
+                raise HTTPException(status_code=403, detail="본인의 개인 팀에만 접근할 수 있습니다.")
         except (ValueError, IndexError):
-            raise HTTPException(status_code=400, detail="올바르지 않은 개인 스페이스 ID입니다.")
+            raise HTTPException(status_code=400, detail="올바르지 않은 개인 팀 ID입니다.")
         return
     membership = db.query(UserTeam).filter(UserTeam.user_id == user_id, UserTeam.team_id == normalized).first()
     if not membership:
@@ -708,6 +740,9 @@ def create_team(payload: dict = Body(...), current_user: User = Depends(get_curr
     # 생성자를 소유자(owner) 역할로 가입
     user_team = UserTeam(user_id=current_user.id, team_id=team_id, role="owner")
     db.add(user_team)
+
+    # 신규 팀에 기본 스페이스 생성
+    default_space = create_default_space(db, team_id)
 
     # 신규 팀에 기본 폴더 분류 규칙 추가
     seed_folder_rules(db, team_id)
@@ -775,10 +810,10 @@ def list_my_teams(current_user: User = Depends(get_current_user), db: Session = 
         .all()
     )
 
-    # 개인 스페이스를 항상 첫 번째 항목으로 추가
+    # 개인 팀을 항상 첫 번째 항목으로 추가
     teams_list = [{
         "id": personal_space_id,
-        "name": "내 스페이스",
+        "name": "내 팀",
         "type": "personal",
         "role": "owner",
         "invite_code": ""
@@ -799,15 +834,96 @@ def list_my_teams(current_user: User = Depends(get_current_user), db: Session = 
     }
 
 
+@app.get("/api/teams/{team_id}/spaces")
+def get_team_spaces(team_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    """특정 팀의 스페이스 목록 조회 (스페이스가 없으면 기본 스페이스 자동 생성)"""
+    normalized_team_id = normalize_team_id(team_id)
+    check_team_access(normalized_team_id, current_user.id, db)
+    spaces = db.query(Space).filter(Space.team_id == normalized_team_id).all()
+
+    # 스페이스가 없으면 기본 스페이스 생성
+    if not spaces:
+        default_space = create_default_space(db, normalized_team_id)
+        db.commit()
+        spaces = [default_space]
+
+    spaces_list = [
+        {
+            "id": space.id,
+            "name": space.name,
+            "description": space.description or "",
+            "created_at": space.created_at.isoformat() if space.created_at else ""
+        }
+        for space in spaces
+    ]
+    return {
+        "ok": True,
+        "spaces": spaces_list
+    }
+
+
+@app.post("/api/spaces")
+def create_space(payload: dict = Body(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    """새로운 스페이스 생성"""
+    team_id = str(payload.get("team_id") or "").strip()
+    space_name = str(payload.get("name") or "").strip()
+
+    if not team_id:
+        raise HTTPException(status_code=400, detail="팀 ID를 입력해주세요.")
+    if not space_name:
+        raise HTTPException(status_code=400, detail="스페이스 이름을 입력해주세요.")
+
+    check_team_access(team_id, current_user.id, db)
+
+    space_id = f"space-{uuid.uuid4().hex[:12]}"
+    space = Space(
+        id=space_id,
+        team_id=normalize_team_id(team_id),
+        name=space_name,
+        description=payload.get("description", "")
+    )
+    db.add(space)
+    db.commit()
+    db.refresh(space)
+
+    return {
+        "ok": True,
+        "space": {
+            "id": space.id,
+            "name": space.name,
+            "description": space.description or "",
+            "created_at": space.created_at.isoformat() if space.created_at else ""
+        }
+    }
+
+
+@app.delete("/api/spaces/{space_id}")
+def delete_space(space_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    """스페이스 삭제"""
+    space = db.query(Space).filter(Space.id == space_id).first()
+    if not space:
+        raise HTTPException(status_code=404, detail="스페이스를 찾을 수 없습니다.")
+
+    check_team_access(space.team_id, current_user.id, db)
+
+    db.query(Document).filter(Document.space_id == space_id).update({"space_id": None}, synchronize_session=False)
+    db.query(FolderRule).filter(FolderRule.space_id == space_id).update({"space_id": None}, synchronize_session=False)
+    db.query(ReviewQueue).filter(ReviewQueue.space_id == space_id).update({"space_id": None}, synchronize_session=False)
+    db.delete(space)
+    db.commit()
+
+    return {"ok": True, "message": "스페이스가 삭제되었습니다."}
+
+
 @app.post("/api/migrate-demo-to-personal")
 def migrate_demo_to_personal(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> dict:
-    """demo-team의 문서/폴더규칙/검토큐를 현재 사용자의 개인 스페이스로 이전합니다."""
+    """demo-team의 문서/폴더규칙/검토큐를 현재 사용자의 개인 팀으로 이전합니다."""
     personal_id = f"personal-{current_user.id}"
 
-    # 이미 이전한 적 있는지 확인 (개인 스페이스에 이미 문서가 있으면 중복 이전 방지)
+    # 이미 이전한 적 있는지 확인 (개인 팀에 이미 문서가 있으면 중복 이전 방지)
     already_has_personal = db.query(Document).filter(Document.team_id == personal_id).first()
     demo_doc_count = db.query(Document).filter(Document.team_id == "demo-team").count()
 
@@ -822,7 +938,7 @@ def migrate_demo_to_personal(
             {"team_id": personal_id}, synchronize_session=False
         )
 
-    # 개인 스페이스의 폴더 규칙이 없으면 기본값으로 seeding
+    # 개인 팀의 폴더 규칙이 없으면 기본값으로 seeding
     seed_folder_rules(db, personal_id)
     db.commit()
 
@@ -995,6 +1111,7 @@ async def analyze(file: UploadFile = File(...), current_user: User = Depends(get
 async def create_document(
     file: UploadFile = File(...),
     team_id: str = Form(DEFAULT_TEAM_ID),
+    space_id: str = Form(""),
     category: str = Form(""),
     category_id: str = Form(""),
     summary: str = Form(""),
@@ -1006,6 +1123,12 @@ async def create_document(
 ) -> dict:
     normalized_team_id = normalize_team_id(team_id)
     check_team_access(normalized_team_id, current_user.id, db)
+
+    # space_id 검증
+    if space_id:
+        space = db.query(Space).filter(Space.id == space_id, Space.team_id == normalized_team_id).first()
+        if not space:
+            raise HTTPException(status_code=400, detail="해당 팀에 존재하는 스페이스가 아닙니다.")
     filename = file.filename or "uploaded_file"
     file_type = detect_file_type(filename, file.content_type or "")
     content = await file.read()
@@ -1068,6 +1191,7 @@ async def create_document(
 
     doc = Document(
         team_id=normalized_team_id,
+        space_id=space_id if space_id else None,
         filename=filename,
         file_type=file_type,
         category=category,
@@ -1106,6 +1230,7 @@ async def create_document(
         else:
             db.add(ReviewQueue(
                 team_id=normalized_team_id,
+                space_id=space_id if space_id else None,
                 document_id=doc.id,
                 filename=filename,
                 reason="신뢰도 낮음 또는 기타 분류",
@@ -1132,17 +1257,19 @@ async def create_document(
 @app.get("/api/documents")
 def list_documents(
     team_id: str = Query(DEFAULT_TEAM_ID),
+    space_id: str = Query(""),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     normalized_team_id = normalize_team_id(team_id)
     check_team_access(normalized_team_id, current_user.id, db)
-    docs = (
+    query = (
         db.query(Document)
         .filter(Document.archived == False, Document.team_id == normalized_team_id)  # noqa: E712
-        .order_by(Document.created_at.desc())
-        .all()
     )
+    if space_id:
+        query = query.filter(Document.space_id == space_id)
+    docs = query.order_by(Document.created_at.desc()).all()
     return {"ok": True, "documents": [serialize_document(doc) for doc in docs]}
 
 
@@ -1509,6 +1636,7 @@ def serialize_document(doc: Document) -> dict:
     return {
         "id": doc.id,
         "team_id": doc.team_id or DEFAULT_TEAM_ID,
+        "space_id": doc.space_id or "",
         "filename": doc.filename,
         "file_type": doc.file_type,
         "category": doc.category,

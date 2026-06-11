@@ -233,6 +233,38 @@
       color: var(--accent-2);
     }
 
+    .space-item.active {
+      background: var(--accent-soft);
+      color: var(--accent-2);
+      font-weight: 700;
+    }
+
+    .space-item.active i {
+      color: var(--accent-2);
+    }
+
+    .add-space-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      margin-top: 6px;
+      padding: 6px 8px;
+      border: 1px dashed var(--border-2);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-2);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .add-space-btn:hover {
+      background: var(--surface-2);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
     .folder-count {
       display: inline-grid;
       place-items: center;
@@ -2278,7 +2310,7 @@
       </div>
 
       <div class="team-box">
-        <label class="team-label" for="teamSelect"><i class="ti ti-layout-sidebar"></i>스페이스 전환</label>
+        <label class="team-label" for="teamSelect"><i class="ti ti-layout-sidebar"></i>팀</label>
         <select class="select" id="teamSelect"></select>
         <div class="team-note" id="spaceContextNote">현재: <span id="currentTeamMini">로딩 중...</span></div>
         <div id="teamActionsBtnContainer" style="display: none; gap: 6px; margin-top: 8px;">
@@ -2289,6 +2321,10 @@
           <i class="ti ti-key" style="font-size: 13px;"></i>초대 코드 보기
         </button>
       </div>
+
+      <div class="side-label">스페이스</div>
+      <div class="folder-list" id="spaceListInSidebar"></div>
+      <button class="add-space-btn" id="addSpaceBtn" type="button"><i class="ti ti-plus"></i>스페이스 생성</button>
 
       <div class="side-label">메뉴</div>
       <nav class="nav-list" aria-label="Main">
@@ -2315,7 +2351,7 @@
         </button>
       </nav>
 
-      <div class="side-label">분류 폴더</div>
+      <div class="side-label" id="folderLabelContainer">분류 폴더</div>
       <div class="folder-list" id="folderList"></div>
 
       <div class="system-box">
@@ -2802,7 +2838,7 @@
                 <span id="previewRecScore" style="font-size:12px; font-weight: 800; color: var(--primary);">-</span>
               </div>
               <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size:12px; color:var(--text-3);">보관 스페이스</span>
+                <span style="font-size:12px; color:var(--text-3);">보관 팀</span>
                 <span id="previewRecTeam" style="font-size:12px; font-weight: 500;">-</span>
               </div>
             </div>
@@ -3089,6 +3125,9 @@
       teamName: "Archivon Demo Team",
       team_id: DEFAULT_TEAM_ID,
       team_name: "Archivon Demo Team",
+      spaceId: "",
+      spaceName: "",
+      spaces: [],
       dict: { ...DEFAULT_DICT },
       learnedExamples: [],
       folderRules: [],
@@ -3142,9 +3181,11 @@
 
       renderTeamSelector();
       await checkBackendHealth();
+      await loadSpacesFromBackend();
       await loadFolderRulesFromBackend(true);
       await loadDocumentsFromBackend(true);
       await loadReviewQueueFromBackend(true);
+      renderSpaceListInSidebar();
       renderFolderNav();
       renderFolderFilter();
       renderMetrics();
@@ -3230,6 +3271,7 @@
       }
 
       qs("#teamSelect").addEventListener("change", onTeamChange);
+      qs("#addSpaceBtn").addEventListener("click", onCreateSpace);
       qs("#processList").addEventListener("click", onProcessClick);
       qs("#docsFilterQuery").addEventListener("input", (event) => updateDocFilter("query", event.target.value));
       qs("#folderFilter").addEventListener("change", (event) => updateDocFilter("folder", event.target.value));
@@ -3368,7 +3410,7 @@
 
       await loadMyTeams();
 
-      // demo-team 데이터를 개인 스페이스로 이전 (최초 1회, 백엔드에서 중복 방지)
+      // demo-team 데이터를 개인 팀으로 이전 (최초 1회, 백엔드에서 중복 방지)
       try {
         await fetchApi("/api/migrate-demo-to-personal", { method: "POST" });
         // 이전 후 팀 목록 재로드 (문서 수 반영)
@@ -3377,7 +3419,7 @@
         console.warn("마이그레이션 스킵:", e);
       }
 
-      // 개인 스페이스(첫 번째 항목)를 자동 선택
+      // 개인 팀(첫 번째 항목)을 자동 선택
       if (TEAM_OPTIONS.length > 0) {
         state.teamId = TEAM_OPTIONS[0].id;
         state.teamName = TEAM_OPTIONS[0].name;
@@ -3494,7 +3536,7 @@
               currentOption.invite_code
             );
           } else {
-            showToast("초대 코드가 없는 스페이스입니다.", "warning");
+            showToast("초대 코드가 없는 팀입니다.", "warning");
           }
         });
       }
@@ -3648,7 +3690,7 @@
       const isPersonal = currentOption && currentOption.type === "personal";
       if (mini) mini.textContent = state.teamName;
       if (docsLabel) docsLabel.textContent = isPersonal
-        ? `📁 내 개인 스페이스`
+        ? `📁 내 개인 팀`
         : `👥 팀: ${state.teamName}`;
       if (noteEl) noteEl.innerHTML = isPersonal
         ? `현재: <span id="currentTeamMini">${escapeHTML(state.teamName)}</span> <span style="font-size:10px;color:var(--text-3)">(나만 볼 수 있음)</span>`
@@ -3669,6 +3711,9 @@
       cacheCurrentTeamFolderRules();
       state.teamId = normalizeTeamId(event.target.value);
       state.teamName = getTeamName(state.teamId);
+      state.spaceId = "";
+      state.spaceName = "";
+      state.spaces = [];
       state.selectedFolder = "";
       state.filters = normalizeFilterState(state.filters);
       state.filters.folder = "";
@@ -3678,9 +3723,11 @@
       lastReviewQueueSyncAt = 0;
       updateTeamLabels();
       saveState();
+      await loadSpacesFromBackend();
       await loadFolderRulesFromBackend(true);
       await loadDocumentsFromBackend(true);
       await loadReviewQueueFromBackend(true);
+      renderSpaceListInSidebar();
       renderFolderNav();
       renderFolderFilter();
       renderMetrics();
@@ -3690,7 +3737,53 @@
       renderArchive();
       renderLearningStats();
       doSearch();
-      showToast(`${state.teamName} 문서함으로 전환했습니다.`, "info");
+      showToast(`${state.teamName} 팀으로 전환했습니다.`, "info");
+    }
+
+    // 스페이스 선택 (사이드바 목록 클릭)
+    function selectSpace(spaceId) {
+      if (!spaceId || spaceId === state.spaceId) return;
+      state.spaceId = spaceId;
+      const space = state.spaces.find(s => s.id === spaceId);
+      state.spaceName = space ? space.name : "";
+      state.selectedFolder = "";
+      state.filters = normalizeFilterState(state.filters);
+      state.filters.folder = "";
+      saveState();
+      renderSpaceListInSidebar();
+      renderFolderNav();
+      renderFolderFilter();
+      renderMetrics();
+      renderDashboard();
+      renderDocs();
+      showToast(`${state.spaceName} 스페이스로 전환했습니다.`, "info");
+    }
+
+    // 스페이스 생성
+    async function onCreateSpace() {
+      const name = (window.prompt("새 스페이스 이름을 입력하세요.") || "").trim();
+      if (!name) return;
+      if (!currentApiBaseUrl) {
+        await checkBackendHealth();
+      }
+      if (!currentApiBaseUrl) {
+        showToast("백엔드에 연결할 수 없어 스페이스를 생성할 수 없습니다.", "warning");
+        return;
+      }
+      try {
+        const response = await fetchApi("/api/spaces", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ team_id: normalizeTeamId(state.teamId), name })
+        }, 8000);
+        const data = await response.json();
+        if (!data.ok || !data.space) throw new Error("스페이스 생성 응답이 올바르지 않습니다.");
+        state.spaces.push(data.space);
+        selectSpace(data.space.id);
+        showToast(`${name} 스페이스를 생성했습니다.`, "success");
+      } catch (error) {
+        showToast("스페이스 생성에 실패했습니다.", "warning");
+      }
     }
 
     async function fetchWithTimeout(url, options = {}, timeoutMs = BACKEND_REQUEST_TIMEOUT_MS) {
@@ -3794,6 +3887,25 @@
       if (target === "dict") { renderDict(); renderRuleManager(); renderLearningStats(); }
       if (target === "archive") renderArchive();
       saveState();
+    }
+
+    function renderSpaceListInSidebar() {
+      const spaceListContainer = qs("#spaceListInSidebar");
+      if (!spaceListContainer) return;
+      if (!state.spaces || state.spaces.length === 0) {
+        spaceListContainer.innerHTML = `<div class="team-note" style="padding: 6px 8px;">스페이스가 없습니다.</div>`;
+        return;
+      }
+
+      spaceListContainer.innerHTML = state.spaces.map((space) => `
+        <button class="folder-item space-item ${state.spaceId === space.id ? "active" : ""}" type="button" data-space="${escapeAttr(space.id)}">
+          <span><i class="ti ti-folder-open"></i>${escapeHTML(space.name)}</span>
+        </button>
+      `).join("");
+
+      qsa(".space-item").forEach((button) => {
+        button.addEventListener("click", () => selectSpace(button.dataset.space));
+      });
     }
 
     function renderFolderNav() {
@@ -4416,6 +4528,7 @@
         const formData = new FormData();
         formData.append("file", item.fileObject, item.fileName);
         formData.append("team_id", item.teamId || getCurrentTeamId());
+        formData.append("space_id", state.spaceId || "");
         formData.append("category", top.folder || "");
         formData.append("category_id", top.folderId || "");
         formData.append("summary", buildSummary(item.fileName, top, item.foundTerms || []));
@@ -4921,6 +5034,7 @@
       const formData = new FormData();
       formData.append("file", file, doc.filename);
       formData.append("team_id", doc.teamId || getCurrentTeamId());
+      formData.append("space_id", state.spaceId || "");
       formData.append("category", doc.category || "");
       formData.append("category_id", doc.categoryId || "");
       formData.append("summary", doc.summary || "");
@@ -6111,6 +6225,33 @@
         return true;
       } catch (error) {
         state.folderRules = folderRulesForTeam(getCurrentTeamId());
+        return false;
+      }
+    }
+
+    async function loadSpacesFromBackend() {
+      if (!currentApiBaseUrl) {
+        await checkBackendHealth();
+      }
+      if (!currentApiBaseUrl) {
+        state.spaces = [];
+        return false;
+      }
+      try {
+        const teamId = normalizeTeamId(state.teamId);
+        const response = await fetchApi(`/api/teams/${encodeURIComponent(teamId)}/spaces`, { method: "GET" }, 6000);
+        const data = await response.json();
+        const spaces = Array.isArray(data.spaces) ? data.spaces : [];
+        if (!data.ok) throw new Error("Invalid spaces response");
+        state.spaces = spaces;
+        if (spaces.length > 0 && !state.spaceId) {
+          state.spaceId = spaces[0].id;
+          state.spaceName = spaces[0].name;
+        }
+        saveState();
+        return true;
+      } catch (error) {
+        state.spaces = [];
         return false;
       }
     }
@@ -8554,8 +8695,14 @@
       return badges[resolvedId] || "";
     }
 
+    function getCurrentSpaceDocs() {
+      const teamDocs = getCurrentTeamDocs();
+      if (!state.spaceId) return teamDocs;
+      return teamDocs.filter(doc => doc.spaceId === state.spaceId);
+    }
+
     function getFolderCounts() {
-      return getCurrentTeamDocs().reduce((acc, doc) => {
+      return getCurrentSpaceDocs().reduce((acc, doc) => {
         acc[doc.category] = (acc[doc.category] || 0) + 1;
         return acc;
       }, {});
@@ -8567,6 +8714,7 @@
         const categoryId = doc.categoryId || getFolderIdByName(doc.category || "") || "other";
         const rule = getFolderRuleById(categoryId);
         const teamId = normalizeTeamId(doc.teamId || doc.team_id || DEFAULT_TEAM_ID);
+        const spaceId = doc.spaceId || doc.space_id || "";
         const recs = normalizeRecommendationList(Array.isArray(doc.recs) ? doc.recs : Array.isArray(doc.recommendations) ? doc.recommendations : []);
         const categoryName = getFolderDisplayName(categoryId) || rule.name;
         return {
@@ -8575,6 +8723,8 @@
           teamName: getTeamName(teamId),
           team_id: teamId,
           team_name: getTeamName(teamId),
+          spaceId,
+          space_id: spaceId,
           categoryId,
           category: categoryName,
           matched: Array.isArray(doc.matched) ? doc.matched : [],
@@ -8803,6 +8953,9 @@
           teamName: getTeamName(teamId),
           team_id: teamId,
           team_name: getTeamName(teamId),
+          spaceId: saved.spaceId || "",
+          spaceName: saved.spaceName || "",
+          spaces: Array.isArray(saved.spaces) ? saved.spaces : [],
           dict: { ...DEFAULT_DICT, ...((savedDict && typeof savedDict === "object") ? savedDict : {}) },
           learnedExamples: [],
           folderRules: [],
@@ -8828,6 +8981,9 @@
           teamName: getTeamName(DEFAULT_TEAM_ID),
           team_id: DEFAULT_TEAM_ID,
           team_name: getTeamName(DEFAULT_TEAM_ID),
+          spaceId: "",
+          spaceName: "",
+          spaces: [],
           dict: { ...DEFAULT_DICT },
           learnedExamples: [],
           folderRules: cloneFolderRules(),
