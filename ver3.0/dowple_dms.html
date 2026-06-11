@@ -233,38 +233,6 @@
       color: var(--accent-2);
     }
 
-    .space-item.active {
-      background: var(--accent-soft);
-      color: var(--accent-2);
-      font-weight: 700;
-    }
-
-    .space-item.active i {
-      color: var(--accent-2);
-    }
-
-    .add-space-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      width: 100%;
-      margin-top: 6px;
-      padding: 6px 8px;
-      border: 1px dashed var(--border-2);
-      border-radius: 8px;
-      background: transparent;
-      color: var(--text-2);
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    .add-space-btn:hover {
-      background: var(--surface-2);
-      color: var(--accent);
-      border-color: var(--accent);
-    }
-
     .folder-count {
       display: inline-grid;
       place-items: center;
@@ -1086,6 +1054,179 @@
       justify-content: space-between;
       gap: 10px;
       margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* ── 폴더 구조 가져오기 ── */
+    .struct-modal { background:var(--surface);border:1px solid var(--border);border-radius:14px;width:90%;max-width:560px;box-shadow:0 12px 48px rgba(0,0,0,.35);display:flex;flex-direction:column;max-height:85vh; }
+    .struct-modal-header { padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
+    .struct-modal-body { flex:1;min-height:0;overflow-y:auto;padding:16px 20px; }
+    .struct-modal-footer { padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0; }
+    .struct-folder-row { border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden; }
+    .struct-folder-header { display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface-2);cursor:pointer; }
+    .struct-folder-name { font-weight:800;font-size:13px;flex:1; }
+    .struct-folder-meta { font-size:11px;color:var(--text-3); }
+    .struct-folder-keywords { padding:10px 14px;border-top:1px solid var(--border);font-size:12px;line-height:1.6; }
+    .struct-kw-tag { display:inline-block;background:var(--accent-soft);color:var(--accent-2);border:1px solid #a7d8c6;border-radius:4px;padding:2px 7px;margin:2px;font-size:11px; }
+    .struct-progress { height:4px;background:var(--surface-3);border-radius:999px;overflow:hidden;margin-top:6px; }
+    .struct-progress-fill { height:100%;background:var(--accent);border-radius:inherit;transition:width 300ms ease; }
+    .struct-tree-item { padding:4px 0;font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:6px; }
+
+    /* ── 컴팩트 프로세스 카드 ── */
+    .pc-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      min-height: 52px;
+    }
+    .pc-icon { font-size: 16px; color: var(--text-3); flex-shrink: 0; }
+    .pc-name {
+      flex: 1;
+      min-width: 0;
+      font-weight: 700;
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .pc-phase-label {
+      font-size: 11px;
+      color: var(--text-3);
+      flex-shrink: 0;
+    }
+    .pc-spinner {
+      width: 14px; height: 14px;
+      border: 2px solid var(--surface-3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .pc-result-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 0;
+    }
+    .pc-folder {
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 130px;
+    }
+    .pc-bar-wrap {
+      flex: 1;
+      min-width: 60px;
+      max-width: 100px;
+    }
+    .pc-bar-bg {
+      height: 6px;
+      border-radius: 999px;
+      background: var(--surface-3);
+      overflow: hidden;
+    }
+    .pc-bar-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: var(--accent);
+    }
+    .pc-bar-fill.mid { background: #ba7517; }
+    .pc-bar-fill.low { background: #7b8794; }
+    .pc-score {
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--text-2);
+      white-space: nowrap;
+    }
+    .pc-expand-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-3);
+      font-size: 14px;
+      padding: 4px;
+      flex-shrink: 0;
+      transition: transform 150ms ease;
+    }
+    .pc-expand-btn.open { transform: rotate(180deg); }
+
+    .pc-detail {
+      display: none;
+      padding: 0 14px 12px;
+      border-top: 1px solid var(--border);
+      margin-top: 0;
+    }
+    .pc-detail.show { display: block; }
+
+    .pc-top3 {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .pc-top3-item {
+      flex: 1;
+      min-width: 120px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: var(--surface-2);
+      cursor: pointer;
+      transition: border-color 120ms ease, background 120ms ease;
+    }
+    .pc-top3-item:hover,
+    .pc-top3-item.selected {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .pc-top3-name {
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 5px;
+    }
+    .pc-top3-bar {
+      height: 5px;
+      border-radius: 999px;
+      background: var(--surface-3);
+      overflow: hidden;
+    }
+    .pc-top3-fill { height: 100%; border-radius: inherit; background: var(--accent); }
+    .pc-top3-fill.mid { background: #ba7517; }
+    .pc-top3-fill.low { background: #7b8794; }
+    .pc-top3-score {
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--text-2);
+      margin-top: 3px;
+    }
+    .pc-summary {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-2);
+      line-height: 1.5;
+    }
+    .pc-warn {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--amber);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .pc-save-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
       flex-wrap: wrap;
     }
 
@@ -2252,6 +2393,112 @@
   </style>
   <!-- 구글 원탭 및 GSI 로그인을 위한 SDK -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- mammoth.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <!-- SheetJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- JSZip -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as fbSignOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCfViEbrTY2d1HeEy0YbaGg-F70RQxsIfs",
+      authDomain: "archivon-dms.firebaseapp.com",
+      projectId: "archivon-dms",
+      storageBucket: "archivon-dms.firebasestorage.app",
+      messagingSenderId: "149553908670",
+      appId: "1:149553908670:web:f504a6a423ddfb9bfc07ef"
+    };
+
+    const fbApp = initializeApp(firebaseConfig);
+    window._fbAuth = getAuth(fbApp);
+    window._fbDb = getFirestore(fbApp);
+    window._fbStorage = getStorage(fbApp);
+    window._fbGoogleProvider = new GoogleAuthProvider();
+    window._fbFunctions = { collection, addDoc, getDocs, query, where, updateDoc, doc, deleteDoc, serverTimestamp, ref, uploadBytes, getDownloadURL };
+
+    // PDF.js worker 설정
+    if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    // ── Transformers.js 임베딩 모델 ──────────────────────────────────
+    const FOLDER_SENTENCES = {
+      notice:      ["지원 사업 모집 공고 안내","신청서 제출 기간 및 접수 방법","공모 지원 자격과 선발 기준","양식 및 서식 작성 방법","별첨 서류와 첨부파일 목록","접수처 및 문의처 안내","제출 마감일과 심사 일정"],
+      plan:        ["사업 목표 및 추진 전략 계획서","수행 일정과 예산 계획 수립","연구 목표와 기대 효과 제안서","개발 로드맵과 마일스톤","사업 추진 방향 및 실행 전략","프로젝트 추진 배경과 필요성","수행 계획서 작성 및 제출"],
+      research:    ["설문 조사 결과 및 응답자 분석","시장 분석 및 경쟁사 현황 조사","인터뷰 내용과 응답 데이터 분석","통계 분석 결과와 인사이트 도출","사례 조사 및 벤치마킹 결과","트렌드 분석과 시사점 정리","표본 집단 분석 리서치 보고서"],
+      presentation:["발표 목차와 핵심 메시지 슬라이드","슬라이드 구성 및 발표 순서 정리","최종 발표 자료 PPT 덱","중간 발표 및 Q&A 준비 자료","프레젠테이션 발표 대본 작성","발표자 노트와 공유용 자료","발표 흐름과 슬라이드 내용 설명"],
+      contract:    ["갑과 을 간의 계약 조건 명시","대금 지급 일정과 정산 방법","업무협약서 MOU 체결 내용","계좌 정보와 입금 확인 내역","거래 조건과 계약 기간 명시","정산 기한과 세금계산서 발행","계약서 조항과 위약금 조건 명시"],
+      other:       ["분류 기준이 불명확한 문서","검토가 필요한 자료","임시 보관 파일","기타 참고 자료 모음"],
+      report:      ["서론 본론 결론으로 구성된 보고서","분석 결과와 종합 의견 제시","연구 배경과 참고문헌 정리","결론 도출과 시사점 제언","사례 분석 및 고찰 보고서","리포트 요약 및 개선 방향 제안","데이터 분석 결과 보고서 작성"],
+      meeting:     ["회의 안건과 참석자 명단 기록","결정 사항과 후속 조치 확인","회의록 작성 및 팀 공유","액션아이템과 담당자 배정","다음 회의 일정 및 안건 조율","논의 내용과 합의 결과 정리","회의 메모와 주요 결정 기록"],
+      education:   ["교육 자료와 학습 목표 안내","매뉴얼과 사용 방법 가이드 작성","연습문제와 예제 풀이 해설","온보딩 과정과 업무 절차 교육","튜토리얼과 실습 내용 정리","교재 내용과 강의 자료 구성","코드 예제와 알고리즘 설명"],
+      hr:          ["채용 공고와 지원 자격 안내","면접 평가와 입사 서류 관리","근로계약서와 근무 조건 명시","인사평가와 급여 내역 관리","휴가 신청과 퇴사 절차 안내","이력서와 자기소개서 검토","인재 채용 및 온보딩 절차"],
+      finance:     ["매출과 비용 재무 분석 보고","손익계산서와 재무상태표 작성","예산 집행과 결산 보고서","회계 처리와 지출 승인 절차","영수증과 세금계산서 관리","재무제표와 비용 내역 정리","분기별 재무 현황 보고서"],
+      purchase:    ["구매 요청과 발주 번호 관리","견적서와 납품 일정 확인","입고 확인과 거래명세서 처리","공급업체 정보와 단가 비교","발주서와 구매 계약 체결","물품 수량과 납품 조건 확인","구매 프로세스와 승인 절차"],
+      sales:       ["고객 상담과 영업 기회 발굴","제안서와 거래처 정보 관리","CRM 고객관리 현황 분석","영업 목표와 매출 기회 추적","고객 요구사항과 제안 내용 정리","거래처 미팅과 후속 연락 관리","영업 파이프라인과 세일즈 관리"],
+      marketing:   ["마케팅 캠페인 성과 분석 보고","광고 집행과 콘텐츠 기획 전략","브랜드 메시지와 홍보 전략 수립","보도자료 배포와 SNS 운영 계획","유입 분석과 전환율 측정 결과","프로모션과 퍼포먼스 마케팅 기획","캠페인 기획과 광고 소재 제작"],
+      tech:        ["API 명세와 시스템 아키텍처 설계","요구사항 정의와 ERD 데이터베이스","테스트 케이스와 배포 절차 문서","버그 리포트와 개발 일지 기록","CI/CD와 인프라 설정 가이드","데이터베이스 설계와 쿼리 최적화","기술 스택과 개발 환경 아키텍처"],
+      certificate: ["사업자등록증과 납세증명서 제출","재직증명서와 경력증명서 발급","자격증과 수료증 취득 확인","발급기관과 등록번호 공식 확인","유효기간과 인증번호 명시","공식 증빙과 확인서 발급","인감증명서와 등기부등본 제출"],
+    };
+
+    window._embeddingReady  = false;
+    window._embeddingStatus = 'idle';
+    window._folderEmbeddings = {};
+    window._embeddingModel   = null;
+
+    function cosine(a, b) {
+      let dot=0, na=0, nb=0;
+      for (let i=0; i<a.length; i++) { dot+=a[i]*b[i]; na+=a[i]*a[i]; nb+=b[i]*b[i]; }
+      return na && nb ? dot / (Math.sqrt(na)*Math.sqrt(nb)) : 0;
+    }
+    function avgVec(vecs) {
+      const dim=vecs[0].length, out=new Array(dim).fill(0);
+      for (const v of vecs) for (let i=0; i<dim; i++) out[i]+=v[i]/vecs.length;
+      return out;
+    }
+    window._cosine = cosine;
+
+    async function initEmbeddingModel() {
+      try {
+        window._embeddingStatus = 'loading';
+        const { pipeline, env } = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js");
+        env.allowLocalModels = false;
+        env.useBrowserCache  = true;
+        const extractor = await pipeline("feature-extraction", "Xenova/paraphrase-multilingual-MiniLM-L12-v2");
+        window._embeddingModel = extractor;
+
+        // 폴더별 대표 문장 벡터 사전 계산
+        for (const [fid, sentences] of Object.entries(FOLDER_SENTENCES)) {
+          const vecs = [];
+          for (const s of sentences) {
+            const out = await extractor(s, { pooling:"mean", normalize:true });
+            vecs.push(Array.from(out.data));
+          }
+          window._folderEmbeddings[fid] = avgVec(vecs);
+        }
+        window._embeddingReady  = true;
+        window._embeddingStatus = 'ready';
+        // 상태 표시 업데이트
+        const badge = document.getElementById("embeddingStatusBadge");
+        if (badge) { badge.textContent = "AI 의미 분석 준비 완료"; badge.style.color = "var(--accent)"; }
+      } catch(e) {
+        window._embeddingStatus = 'error';
+        console.warn("임베딩 모델 로드 실패:", e);
+        const badge = document.getElementById("embeddingStatusBadge");
+        if (badge) badge.style.display = "none";
+      }
+    }
+    // 백그라운드에서 로드 시작
+    initEmbeddingModel();
+  </script>
 </head>
 <body>
   <!-- 로그인 및 회원가입 전용 화면 (기본 노출) -->
@@ -2310,7 +2557,7 @@
       </div>
 
       <div class="team-box">
-        <label class="team-label" for="teamSelect"><i class="ti ti-layout-sidebar"></i>팀</label>
+        <label class="team-label" for="teamSelect"><i class="ti ti-layout-sidebar"></i>스페이스 전환</label>
         <select class="select" id="teamSelect"></select>
         <div class="team-note" id="spaceContextNote">현재: <span id="currentTeamMini">로딩 중...</span></div>
         <div id="teamActionsBtnContainer" style="display: none; gap: 6px; margin-top: 8px;">
@@ -2321,10 +2568,6 @@
           <i class="ti ti-key" style="font-size: 13px;"></i>초대 코드 보기
         </button>
       </div>
-
-      <div class="side-label">스페이스</div>
-      <div class="folder-list" id="spaceListInSidebar"></div>
-      <button class="add-space-btn" id="addSpaceBtn" type="button"><i class="ti ti-plus"></i>스페이스 생성</button>
 
       <div class="side-label">메뉴</div>
       <nav class="nav-list" aria-label="Main">
@@ -2351,7 +2594,7 @@
         </button>
       </nav>
 
-      <div class="side-label" id="folderLabelContainer">분류 폴더</div>
+      <div class="side-label">분류 폴더</div>
       <div class="folder-list" id="folderList"></div>
 
       <div class="system-box">
@@ -2445,6 +2688,10 @@
             </label>
             <span class="muted" id="autoSaveHelp">OFF: 추천 결과를 확인한 뒤 저장합니다.</span>
           </div>
+          <div style="margin-top:6px;font-size:11px;display:flex;align-items:center;gap:6px;color:var(--text-3)">
+            <div class="pc-spinner" style="width:10px;height:10px;border-width:1.5px;flex-shrink:0"></div>
+            <span id="embeddingStatusBadge">AI 의미 분석 모델 로딩 중 (최초 1회, 이후 캐시됨)...</span>
+          </div>
 
           <div id="batchSummaryContainer"></div>
 
@@ -2464,6 +2711,7 @@
                     <p class="drop-meta">PDF, DOCX, TXT, HWPX, PPTX, XLSX, CSV는 실제 텍스트 추출을 시도하고 HWP/이미지는 향후 OCR 또는 전용 파서로 확장됩니다.</p>
                     <button class="btn btn-primary" id="pickFileBtn" type="button"><i class="ti ti-file-upload"></i>파일 선택</button>
                     <button class="btn btn-secondary" id="pickFolderBtn" type="button" style="margin-left: 8px;"><i class="ti ti-folder"></i>폴더 선택</button>
+                    <button class="btn" id="importStructureBtn" type="button" style="margin-left: 8px;border-color:var(--accent);color:var(--accent)"><i class="ti ti-folder-plus"></i>폴더 구조 가져오기</button>
                     <div class="file-types" aria-label="지원 형식">
                       <span class="chip">PDF</span>
                       <span class="chip">DOCX</span>
@@ -2478,6 +2726,7 @@
                 </div>
                 <input id="fileInput" type="file" multiple accept=".pdf,.hwp,.hwpx,.docx,.txt,.pptx,.xlsx,.csv,.png,.jpg,.jpeg,.webp,.tif,.tiff" hidden>
                 <input id="folderInput" type="file" webkitdirectory directory multiple hidden>
+                <input id="structureInput" type="file" webkitdirectory directory multiple hidden>
               </div>
             </section>
 
@@ -2838,7 +3087,7 @@
                 <span id="previewRecScore" style="font-size:12px; font-weight: 800; color: var(--primary);">-</span>
               </div>
               <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size:12px; color:var(--text-3);">보관 팀</span>
+                <span style="font-size:12px; color:var(--text-3);">보관 스페이스</span>
                 <span id="previewRecTeam" style="font-size:12px; font-weight: 500;">-</span>
               </div>
             </div>
@@ -3062,7 +3311,81 @@
         description: "사업자등록증, 재직증명서, 경력증명서, 수료증, 자격증, 인허가증, 납세증명서, 각종 공식 증빙 문서",
         contextTerms: ["발급일", "발급기관", "증명합니다", "위 사실을 증명함", "등록번호", "사업자등록번호", "자격번호", "유효기간", "인증번호", "대표자명"],
         reason: "발급기관, 등록번호, 증명 문구, 유효기간 등 공식 증빙 문서의 단서가 확인됩니다."
-      }
+      },
+
+      // ── 하위 폴더 (level: 1) ───────────────────────────────────────
+      // 공고/양식 하위
+      { id:"notice_recruit",  name:"채용 공고",       icon:"ti-user-plus",      parentId:"notice",       level:1, keywords:["채용 공고","모집 공고","지원 자격","접수 기간","전형 절차","공개 채용"], contextTerms:["지원 방법","전형 일정","제출 서류"], description:"채용 및 인재 모집 공고 문서" },
+      { id:"notice_support",  name:"지원사업 공고",    icon:"ti-speakerphone",   parentId:"notice",       level:1, keywords:["지원사업","지원 공고","사업 공모","보조금","지원금","신청 자격"], contextTerms:["지원 대상","신청 기간","선정 기준"], description:"정부/기관 지원사업 공모 공고" },
+      { id:"notice_form",     name:"신청서/양식",      icon:"ti-forms",          parentId:"notice",       level:1, keywords:["신청서","양식","서식","신청 양식","제출 양식","작성 요령"], contextTerms:["기재 방법","작성 안내","제출 기한"], description:"각종 신청서 및 서식 양식" },
+
+      // 사업계획서 하위
+      { id:"plan_biz",        name:"사업계획서",       icon:"ti-checkup-list",   parentId:"plan",         level:1, keywords:["사업계획서","사업 목표","사업 개요","사업화 계획","추진 전략"], contextTerms:["목표 시장","사업화 방향","예산 계획"], description:"사업 목표와 전략을 담은 계획서" },
+      { id:"plan_perform",    name:"수행계획서",        icon:"ti-list-check",     parentId:"plan",         level:1, keywords:["수행계획서","수행 방법","추진 일정","과업 내용","수행 체계"], contextTerms:["과업 범위","투입 인력","마일스톤"], description:"프로젝트 수행 방법론 계획서" },
+      { id:"plan_proposal",   name:"제안서",           icon:"ti-file-plus",      parentId:"plan",         level:1, keywords:["제안서","제안 내용","제안 배경","솔루션 제안","개선 제안"], contextTerms:["제안 방향","기대 효과","제안 범위"], description:"업무 개선 또는 사업 제안서" },
+
+      // 조사자료 하위
+      { id:"research_survey", name:"설문/인터뷰",      icon:"ti-clipboard-list", parentId:"research",     level:1, keywords:["설문조사","설문 결과","인터뷰","응답자","응답 결과","설문지"], contextTerms:["표본 수","응답률","주요 결과"], description:"설문조사 및 인터뷰 자료" },
+      { id:"research_market", name:"시장분석",          icon:"ti-chart-bar",      parentId:"research",     level:1, keywords:["시장분석","시장 조사","경쟁사 분석","벤치마킹","시장 동향","TAM"], contextTerms:["시장 규모","경쟁 현황","성장률"], description:"시장 및 경쟁사 분석 자료" },
+      { id:"research_case",   name:"사례조사",          icon:"ti-search",         parentId:"research",     level:1, keywords:["사례 조사","사례 연구","벤치마킹","참고 사례","성공 사례"], contextTerms:["사례 선정","분석 결과","시사점"], description:"국내외 사례 조사 및 분석" },
+
+      // 발표자료 하위
+      { id:"pres_mid",        name:"중간발표",          icon:"ti-presentation",   parentId:"presentation", level:1, keywords:["중간 발표","중간 보고","진행 현황","중간 점검","현재 진행"], contextTerms:["진행 상황","이슈","다음 단계"], description:"프로젝트 중간 발표 자료" },
+      { id:"pres_final",      name:"최종발표",          icon:"ti-award",          parentId:"presentation", level:1, keywords:["최종 발표","최종 보고","완료 보고","결과 발표","최종본"], contextTerms:["주요 성과","결론","향후 계획"], description:"프로젝트 최종 발표 자료" },
+      { id:"pres_ext",        name:"외부/고객 발표",    icon:"ti-users",          parentId:"presentation", level:1, keywords:["고객 발표","외부 발표","IR","투자자 발표","고객사 발표"], contextTerms:["회사 소개","서비스 소개","제품 시연"], description:"외부 발표 및 고객용 자료" },
+
+      // 계약/정산 하위
+      { id:"contract_mou",    name:"MOU/협약서",        icon:"ti-handshake",      parentId:"contract",     level:1, keywords:["MOU","업무협약서","협약","파트너십 협약","협력 협약","양해각서"], contextTerms:["협약 내용","협력 범위","유효 기간"], description:"업무협약서 및 MOU 문서" },
+      { id:"contract_doc",    name:"계약서",            icon:"ti-file-invoice",   parentId:"contract",     level:1, keywords:["계약서","계약 조건","갑","을","계약 체결","계약 기간","위약금"], contextTerms:["계약 내용","의무 사항","계약 해지"], description:"각종 계약서 및 협정서" },
+      { id:"contract_tax",    name:"세금계산서/정산",   icon:"ti-receipt",        parentId:"contract",     level:1, keywords:["세금계산서","정산","대금 정산","지급 내역","정산서","청구서"], contextTerms:["정산 금액","지급 기한","부가세"], description:"세금계산서 및 정산 관련 문서" },
+
+      // 보고서 하위
+      { id:"report_weekly",   name:"주간/월간 보고서",  icon:"ti-calendar-stats", parentId:"report",       level:1, keywords:["주간 보고","월간 보고","주간 현황","월간 현황","정기 보고","주간 업무"], contextTerms:["이번 주","이번 달","완료 사항","계획"], description:"정기 주간/월간 업무 보고서" },
+      { id:"report_project",  name:"프로젝트 보고서",   icon:"ti-report",         parentId:"report",       level:1, keywords:["프로젝트 보고","사업 보고","결과 보고서","수행 결과","완료 보고"], contextTerms:["추진 경과","달성 결과","향후 계획"], description:"프로젝트 수행 결과 보고서" },
+      { id:"report_analysis", name:"분석 보고서",       icon:"ti-chart-dots",     parentId:"report",       level:1, keywords:["분석 보고서","데이터 분석","통계 분석","현황 분석","원인 분석"], contextTerms:["분석 방법","분석 결과","결론"], description:"각종 데이터/현황 분석 보고서" },
+
+      // 회의록 하위
+      { id:"meeting_minutes", name:"회의록",            icon:"ti-notes",          parentId:"meeting",      level:1, keywords:["회의록","회의 결과","회의 내용","정기 회의","임시 회의","킥오프"], contextTerms:["참석자","안건","결정 사항"], description:"공식 회의 기록 문서" },
+      { id:"meeting_memo",    name:"메모/노트",          icon:"ti-note",           parentId:"meeting",      level:1, keywords:["메모","노트","업무 메모","간단 메모","TO-DO","액션아이템"], contextTerms:["확인 사항","전달 내용","기억할 것"], description:"비공식 메모 및 업무 노트" },
+
+      // 교육 하위
+      { id:"edu_manual",      name:"매뉴얼/가이드",     icon:"ti-manual-gearbox", parentId:"education",    level:1, keywords:["매뉴얼","가이드","사용 방법","운영 방법","업무 절차","절차서"], contextTerms:["사용법","설치 방법","단계별 안내"], description:"업무 매뉴얼 및 사용 가이드" },
+      { id:"edu_onboard",     name:"온보딩 자료",        icon:"ti-door-enter",     parentId:"education",    level:1, keywords:["온보딩","신입","입사 교육","OJT","오리엔테이션","신규 직원"], contextTerms:["업무 소개","팀 소개","첫 주 일정"], description:"신규 입사자 온보딩 자료" },
+      { id:"edu_training",    name:"교육/강의 자료",     icon:"ti-school",         parentId:"education",    level:1, keywords:["교육 자료","강의 자료","학습 자료","연수 자료","교육 과정"], contextTerms:["학습 목표","교육 내용","실습"], description:"사내외 교육 및 강의 자료" },
+
+      // 인사 하위
+      { id:"hr_recruit",      name:"채용 서류",          icon:"ti-user-check",     parentId:"hr",           level:1, keywords:["이력서","자기소개서","포트폴리오","지원서","면접 평가","합격 통보"], contextTerms:["지원 동기","경력 사항","면접 결과"], description:"채용 관련 서류 및 평가" },
+      { id:"hr_contract",     name:"근로계약/인사",      icon:"ti-license",        parentId:"hr",           level:1, keywords:["근로계약서","근무 조건","연봉","급여","인사 발령","인사 명령"], contextTerms:["근무 시간","연봉 계약","복리후생"], description:"근로계약 및 인사 관련 문서" },
+      { id:"hr_eval",         name:"인사평가",           icon:"ti-star",           parentId:"hr",           level:1, keywords:["인사평가","성과 평가","KPI","목표 달성","평가 결과","역량 평가"], contextTerms:["평가 기준","목표 설정","피드백"], description:"인사 평가 및 성과 관리 문서" },
+
+      // 재무 하위
+      { id:"fin_statement",   name:"재무제표",           icon:"ti-report-money",   parentId:"finance",      level:1, keywords:["재무제표","손익계산서","재무상태표","현금흐름표","대차대조표"], contextTerms:["매출","영업이익","순이익","자산"], description:"공식 재무제표 및 회계 문서" },
+      { id:"fin_budget",      name:"예산/결산",          icon:"ti-calculator",     parentId:"finance",      level:1, keywords:["예산","결산","예산서","결산서","예산 집행","예산 현황","집행 내역"], contextTerms:["예산 대비","집행률","잔액"], description:"예산 계획 및 결산 보고서" },
+      { id:"fin_expense",     name:"비용/영수증",         icon:"ti-receipt-2",      parentId:"finance",      level:1, keywords:["영수증","비용 청구","지출결의서","법인카드","경비","비용 처리"], contextTerms:["지출 항목","금액","승인"], description:"비용 처리 및 영수증 관련 서류" },
+
+      // 구매 하위
+      { id:"pur_order",       name:"발주서/견적",         icon:"ti-shopping-cart",  parentId:"purchase",     level:1, keywords:["발주서","견적서","견적","발주 번호","PO","구매 주문"], contextTerms:["발주 수량","단가","납기일"], description:"발주서 및 견적서 문서" },
+      { id:"pur_delivery",    name:"납품/입고",           icon:"ti-truck",          parentId:"purchase",     level:1, keywords:["납품서","거래명세서","입고","납품 확인","검수","수령 확인"], contextTerms:["납품 일자","수량 확인","검수 완료"], description:"납품 및 입고 관련 문서" },
+
+      // 영업 하위
+      { id:"sales_proposal",  name:"고객 제안서",         icon:"ti-file-text",      parentId:"sales",        level:1, keywords:["고객 제안서","제안 자료","영업 제안","솔루션 제안","서비스 제안"], contextTerms:["고객 니즈","제안 내용","기대 효과"], description:"고객사 영업 제안 자료" },
+      { id:"sales_record",    name:"상담/미팅 기록",      icon:"ti-message-2",      parentId:"sales",        level:1, keywords:["상담 내용","미팅 기록","고객 상담","영업 미팅","콜 기록","방문 기록"], contextTerms:["고객 요구","후속 조치","다음 일정"], description:"고객 상담 및 영업 미팅 기록" },
+      { id:"sales_crm",       name:"CRM 자료",           icon:"ti-users-group",    parentId:"sales",        level:1, keywords:["CRM","고객관리","고객 정보","거래처","고객 현황","파이프라인"], contextTerms:["고객 단계","매출 기회","담당자"], description:"고객 관계 관리 자료" },
+
+      // 마케팅 하위
+      { id:"mkt_campaign",    name:"캠페인 기획",         icon:"ti-target",         parentId:"marketing",    level:1, keywords:["캠페인","광고 기획","마케팅 전략","광고 집행","프로모션 기획"], contextTerms:["타겟","채널","예산","KPI"], description:"마케팅 캠페인 기획 자료" },
+      { id:"mkt_content",     name:"콘텐츠 자료",         icon:"ti-photo",          parentId:"marketing",    level:1, keywords:["콘텐츠","SNS","인스타그램","유튜브","블로그","콘텐츠 기획"], contextTerms:["콘텐츠 방향","게시 일정","소재"], description:"마케팅 콘텐츠 및 SNS 자료" },
+      { id:"mkt_press",       name:"보도자료/PR",         icon:"ti-news",           parentId:"marketing",    level:1, keywords:["보도자료","PR","언론 배포","보도","기사","대외 커뮤니케이션"], contextTerms:["배포 일정","미디어","주요 내용"], description:"언론 보도자료 및 PR 문서" },
+
+      // 기술 하위
+      { id:"tech_req",        name:"요구사항/설계",       icon:"ti-layout-2",       parentId:"tech",         level:1, keywords:["요구사항","기능 명세","시스템 설계","아키텍처","ERD","데이터 모델"], contextTerms:["기능 요구사항","기술 스택","설계 원칙"], description:"요구사항 정의 및 시스템 설계" },
+      { id:"tech_api",        name:"API/기술 명세",       icon:"ti-code",           parentId:"tech",         level:1, keywords:["API 명세","API 문서","엔드포인트","스웨거","기술 명세","인터페이스 정의"], contextTerms:["요청 파라미터","응답 형식","인증"], description:"API 명세 및 기술 문서" },
+      { id:"tech_deploy",     name:"테스트/배포",         icon:"ti-rocket",         parentId:"tech",         level:1, keywords:["테스트","배포","QA","버그","이슈","릴리즈","CI/CD","배포 절차"], contextTerms:["테스트 케이스","배포 환경","롤백"], description:"테스트 및 배포 관련 문서" },
+
+      // 증명서 하위
+      { id:"cert_biz",        name:"사업자 서류",         icon:"ti-building",       parentId:"certificate",  level:1, keywords:["사업자등록증","법인등기부","통장사본","사업자 서류","법인 서류"], contextTerms:["사업자번호","대표자","사업장 주소"], description:"사업자 등록 및 법인 관련 서류" },
+      { id:"cert_license",    name:"자격증/수료증",       icon:"ti-certificate",    parentId:"certificate",  level:1, keywords:["자격증","수료증","이수증","취득","합격증","면허증","특허증"], contextTerms:["취득일","발급기관","유효기간"], description:"각종 자격증 및 수료증" },
+      { id:"cert_proof",      name:"공식 증빙",           icon:"ti-file-certificate",parentId:"certificate", level:1, keywords:["재직증명서","경력증명서","납세증명서","완납증명서","인감증명서","확인서"], contextTerms:["발급일","용도","증명 내용"], description:"재직/경력/납세 등 공식 증명서" }
     ];
 
     const FOLDER_LABELS_KO = {
@@ -3125,9 +3448,6 @@
       teamName: "Archivon Demo Team",
       team_id: DEFAULT_TEAM_ID,
       team_name: "Archivon Demo Team",
-      spaceId: "",
-      spaceName: "",
-      spaces: [],
       dict: { ...DEFAULT_DICT },
       learnedExamples: [],
       folderRules: [],
@@ -3141,6 +3461,7 @@
 
     let processSeq = 0;
     const processStore = new Map();
+    window.processStore = processStore;
     const batchStore = new Map();
 
     const qs = (selector, root = document) => root.querySelector(selector);
@@ -3181,11 +3502,9 @@
 
       renderTeamSelector();
       await checkBackendHealth();
-      await loadSpacesFromBackend();
       await loadFolderRulesFromBackend(true);
       await loadDocumentsFromBackend(true);
       await loadReviewQueueFromBackend(true);
-      renderSpaceListInSidebar();
       renderFolderNav();
       renderFolderFilter();
       renderMetrics();
@@ -3214,6 +3533,21 @@
       const folderInput = qs("#folderInput");
       const pickFileBtn = qs("#pickFileBtn");
       const pickFolderBtn = qs("#pickFolderBtn");
+      const importStructureBtn = qs("#importStructureBtn");
+      const structureInput = qs("#structureInput");
+
+      if (importStructureBtn && structureInput) {
+        importStructureBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          structureInput.click();
+        });
+        structureInput.addEventListener("change", () => {
+          if (structureInput.files.length) {
+            handleStructureImport(structureInput.files);
+            structureInput.value = "";
+          }
+        });
+      }
 
       dropZone.addEventListener("click", () => fileInput.click());
       pickFileBtn.addEventListener("click", (event) => {
@@ -3271,7 +3605,6 @@
       }
 
       qs("#teamSelect").addEventListener("change", onTeamChange);
-      qs("#addSpaceBtn").addEventListener("click", onCreateSpace);
       qs("#processList").addEventListener("click", onProcessClick);
       qs("#docsFilterQuery").addEventListener("input", (event) => updateDocFilter("query", event.target.value));
       qs("#folderFilter").addEventListener("change", (event) => updateDocFilter("folder", event.target.value));
@@ -3302,7 +3635,22 @@
       qs("#searchResults").addEventListener("click", onSearchResultsClick);
       qs("#dictForm").addEventListener("submit", addDict);
       qs("#saveRulesBtn").addEventListener("click", () => saveFolderRulesFromForm());
-      qs("#resetRulesBtn").addEventListener("click", () => resetFolderRules());
+      qs("#resetRulesBtn").addEventListener("click", () => {
+        const teamId = getCurrentTeamId();
+        const hasCustom = state._hasCustomRules && state._hasCustomRules[teamId];
+        if (hasCustom) {
+          if (!confirm("이 팀의 커스텀 분류 기준을 삭제하고 기본 16개 폴더로 되돌릴까요?")) return;
+          if (state._hasCustomRules) delete state._hasCustomRules[teamId];
+          if (state.folderRulesByTeam) delete state.folderRulesByTeam[teamId];
+          state.folderRules = cloneFolderRules();
+          saveState();
+          renderFolderNav();
+          renderFolderFilter();
+          showToast("기본 분류 기준으로 복원됐습니다.", "success");
+        } else {
+          resetFolderRules();
+        }
+      });
       qs("#resetLearningBtn").addEventListener("click", resetLearningData);
       qs("#demoBtn").addEventListener("click", addDemoDocs);
       qs("#resetBtn").addEventListener("click", resetAll);
@@ -3366,6 +3714,30 @@
           shape: "rectangular"
         });
       }
+
+      // Firebase Auth Google 로그인 버튼 핸들러 추가
+      const gSignInBtn = document.getElementById("gSignInBtnMain");
+      if (gSignInBtn && window._fbAuth && window._fbGoogleProvider) {
+        gSignInBtn.addEventListener("click", async () => {
+          try {
+            const { signInWithPopup } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+            const result = await signInWithPopup(window._fbAuth, window._fbGoogleProvider);
+            if (result && result.user) {
+              const user = result.user;
+              localStorage.setItem("USER_INFO", JSON.stringify({
+                email: user.email,
+                name: user.displayName,
+                picture: user.photoURL,
+                uid: user.uid
+              }));
+              showToast(`${user.displayName || user.email}님, 반갑습니다!`, "success");
+              await afterLogin();
+            }
+          } catch (e) {
+            console.warn("Firebase Auth 실패:", e);
+          }
+        });
+      }
     }
 
     async function handleCredentialResponse(response) {
@@ -3410,7 +3782,7 @@
 
       await loadMyTeams();
 
-      // demo-team 데이터를 개인 팀으로 이전 (최초 1회, 백엔드에서 중복 방지)
+      // demo-team 데이터를 개인 스페이스로 이전 (최초 1회, 백엔드에서 중복 방지)
       try {
         await fetchApi("/api/migrate-demo-to-personal", { method: "POST" });
         // 이전 후 팀 목록 재로드 (문서 수 반영)
@@ -3419,7 +3791,7 @@
         console.warn("마이그레이션 스킵:", e);
       }
 
-      // 개인 팀(첫 번째 항목)을 자동 선택
+      // 개인 스페이스(첫 번째 항목)를 자동 선택
       if (TEAM_OPTIONS.length > 0) {
         state.teamId = TEAM_OPTIONS[0].id;
         state.teamName = TEAM_OPTIONS[0].name;
@@ -3523,6 +3895,9 @@
     }
 
     function setupTeamModals() {
+      if (window._teamModalsInitialized) return;
+      window._teamModalsInitialized = true;
+
       const openCreateBtn = document.getElementById("openCreateTeamBtn");
       const openJoinBtn = document.getElementById("openJoinTeamBtn");
       const viewInviteBtn = document.getElementById("viewInviteCodeBtn");
@@ -3536,7 +3911,7 @@
               currentOption.invite_code
             );
           } else {
-            showToast("초대 코드가 없는 팀입니다.", "warning");
+            showToast("초대 코드가 없는 스페이스입니다.", "warning");
           }
         });
       }
@@ -3569,9 +3944,15 @@
       if (cancelJoin) cancelJoin.addEventListener("click", () => joinModal.hidden = true);
 
       // 팀 생성 API 요청
-      document.getElementById("submitCreateTeamBtn").addEventListener("click", async () => {
+      document.getElementById("submitCreateTeamBtn").addEventListener("click", async (e) => {
+        const btn = e.currentTarget;
+        if (btn.dataset.submitting === "1") return;
+        btn.dataset.submitting = "1";
+        setTimeout(() => { btn.dataset.submitting = "0"; }, 3000);
+
         const name = document.getElementById("newTeamNameInput").value.trim();
         if (!name) {
+          btn.dataset.submitting = "0";
           showToast("팀 이름을 입력해주세요.", "warn");
           return;
         }
@@ -3666,15 +4047,6 @@
       return `${path}${separator}team_id=${encodeURIComponent(getCurrentTeamId())}`;
     }
 
-    // 팀 + 스페이스를 함께 붙인다 (스페이스 단위 리소스: 폴더 규칙 등)
-    function apiPathWithTeamSpace(path) {
-      let result = apiPathWithTeam(path);
-      if (state.spaceId) {
-        result += `&space_id=${encodeURIComponent(state.spaceId)}`;
-      }
-      return result;
-    }
-
     function renderTeamSelector() {
       const select = qs("#teamSelect");
       if (select) {
@@ -3699,7 +4071,7 @@
       const isPersonal = currentOption && currentOption.type === "personal";
       if (mini) mini.textContent = state.teamName;
       if (docsLabel) docsLabel.textContent = isPersonal
-        ? `📁 내 개인 팀`
+        ? `📁 내 개인 스페이스`
         : `👥 팀: ${state.teamName}`;
       if (noteEl) noteEl.innerHTML = isPersonal
         ? `현재: <span id="currentTeamMini">${escapeHTML(state.teamName)}</span> <span style="font-size:10px;color:var(--text-3)">(나만 볼 수 있음)</span>`
@@ -3720,9 +4092,6 @@
       cacheCurrentTeamFolderRules();
       state.teamId = normalizeTeamId(event.target.value);
       state.teamName = getTeamName(state.teamId);
-      state.spaceId = "";
-      state.spaceName = "";
-      state.spaces = [];
       state.selectedFolder = "";
       state.filters = normalizeFilterState(state.filters);
       state.filters.folder = "";
@@ -3732,11 +4101,9 @@
       lastReviewQueueSyncAt = 0;
       updateTeamLabels();
       saveState();
-      await loadSpacesFromBackend();
       await loadFolderRulesFromBackend(true);
       await loadDocumentsFromBackend(true);
       await loadReviewQueueFromBackend(true);
-      renderSpaceListInSidebar();
       renderFolderNav();
       renderFolderFilter();
       renderMetrics();
@@ -3746,55 +4113,7 @@
       renderArchive();
       renderLearningStats();
       doSearch();
-      showToast(`${state.teamName} 팀으로 전환했습니다.`, "info");
-    }
-
-    // 스페이스 선택 (사이드바 목록 클릭) — 해당 스페이스의 분류 폴더를 다시 로드
-    async function selectSpace(spaceId) {
-      if (!spaceId || spaceId === state.spaceId) return;
-      state.spaceId = spaceId;
-      const space = state.spaces.find(s => s.id === spaceId);
-      state.spaceName = space ? space.name : "";
-      state.selectedFolder = "";
-      state.filters = normalizeFilterState(state.filters);
-      state.filters.folder = "";
-      saveState();
-      renderSpaceListInSidebar();
-      // 스페이스 단위 분류 폴더 규칙을 백엔드에서 다시 로드 (스페이스마다 독립)
-      await loadFolderRulesFromBackend(true);
-      renderFolderNav();
-      renderFolderFilter();
-      renderMetrics();
-      renderDashboard();
-      renderDocs();
-      showToast(`${state.spaceName} 스페이스로 전환했습니다.`, "info");
-    }
-
-    // 스페이스 생성
-    async function onCreateSpace() {
-      const name = (window.prompt("새 스페이스 이름을 입력하세요.") || "").trim();
-      if (!name) return;
-      if (!currentApiBaseUrl) {
-        await checkBackendHealth();
-      }
-      if (!currentApiBaseUrl) {
-        showToast("백엔드에 연결할 수 없어 스페이스를 생성할 수 없습니다.", "warning");
-        return;
-      }
-      try {
-        const response = await fetchApi("/api/spaces", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ team_id: normalizeTeamId(state.teamId), name })
-        }, 8000);
-        const data = await response.json();
-        if (!data.ok || !data.space) throw new Error("스페이스 생성 응답이 올바르지 않습니다.");
-        state.spaces.push(data.space);
-        selectSpace(data.space.id);
-        showToast(`${name} 스페이스를 생성했습니다.`, "success");
-      } catch (error) {
-        showToast("스페이스 생성에 실패했습니다.", "warning");
-      }
+      showToast(`${state.teamName} 문서함으로 전환했습니다.`, "info");
     }
 
     async function fetchWithTimeout(url, options = {}, timeoutMs = BACKEND_REQUEST_TIMEOUT_MS) {
@@ -3900,36 +4219,62 @@
       saveState();
     }
 
-    function renderSpaceListInSidebar() {
-      const spaceListContainer = qs("#spaceListInSidebar");
-      if (!spaceListContainer) return;
-      if (!state.spaces || state.spaces.length === 0) {
-        spaceListContainer.innerHTML = `<div class="team-note" style="padding: 6px 8px;">스페이스가 없습니다.</div>`;
-        return;
-      }
-
-      spaceListContainer.innerHTML = state.spaces.map((space) => `
-        <button class="folder-item space-item ${state.spaceId === space.id ? "active" : ""}" type="button" data-space="${escapeAttr(space.id)}">
-          <span><i class="ti ti-folder-open"></i>${escapeHTML(space.name)}</span>
-        </button>
-      `).join("");
-
-      qsa(".space-item").forEach((button) => {
-        button.addEventListener("click", () => selectSpace(button.dataset.space));
-      });
+    function getFolderCountIncludingChildren(folderName, counts) {
+      const folder = getFolderRules().find(f => f.name === folderName);
+      if (!folder) return counts[folderName] || 0;
+      const children = getChildFolders(folder.id);
+      const childCount = children.reduce((sum, c) => sum + (counts[c.name] || 0), 0);
+      return (counts[folderName] || 0) + childCount;
     }
 
     function renderFolderNav() {
       const counts = getFolderCounts();
-      qs("#folderList").innerHTML = getFolderRules().map((folder) => `
-        <button class="folder-item" type="button" data-folder="${escapeAttr(folder.name)}">
-          <span><i class="ti ${folder.icon}"></i>${escapeHTML(folder.name)}</span>
-          <span class="folder-count">${counts[folder.name] || 0}</span>
-        </button>
-      `).join("");
+      const rules = getFolderRules();
+      const roots = rules.filter(f => !f.parentId);
+      // 펼침 상태 유지
+      if (!state._expandedFolders) state._expandedFolders = {};
 
+      let html = "";
+      roots.forEach(folder => {
+        const children = getChildFolders(folder.id);
+        const totalCount = getFolderCountIncludingChildren(folder.name, counts);
+        const hasChildren = children.length > 0;
+        const isExpanded = state._expandedFolders[folder.id] !== false; // 기본 펼침
+
+        html += `<div class="folder-tree-item">
+          <button class="folder-item" type="button" data-folder="${escapeAttr(folder.name)}" style="justify-content:space-between">
+            <span style="display:flex;align-items:center;gap:7px;min-width:0">
+              ${hasChildren ? `<button class="folder-toggle" type="button" data-fid="${escapeAttr(folder.id)}" style="background:none;border:none;cursor:pointer;padding:0;color:var(--text-3);font-size:10px;flex-shrink:0;width:14px">${isExpanded?"▾":"▸"}</button>` : "<span style='width:14px'></span>"}
+              <i class="ti ${folder.icon}"></i>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(folder.name)}</span>
+            </span>
+            <span class="folder-count">${totalCount}</span>
+          </button>`;
+
+        if (hasChildren) {
+          html += `<div class="folder-children" id="fc_${escapeAttr(folder.id)}" style="display:${isExpanded?"block":"none"}">`;
+          children.forEach(child => {
+            const childCount = counts[child.name] || 0;
+            html += `<button class="folder-item folder-child-item" type="button" data-folder="${escapeAttr(child.name)}" style="padding-left:28px;font-size:12px">
+              <span style="display:flex;align-items:center;gap:6px"><i class="ti ${child.icon}" style="font-size:12px"></i>${escapeHTML(child.name)}</span>
+              <span class="folder-count">${childCount}</span>
+            </button>`;
+          });
+          // 하위 폴더 추가 버튼
+          html += `<button class="folder-add-child" type="button" data-parent-id="${escapeAttr(folder.id)}" data-parent-name="${escapeAttr(folder.name)}" style="padding-left:28px;font-size:11px;color:var(--text-3);background:none;border:none;cursor:pointer;width:100%;text-align:left;padding-top:4px;padding-bottom:4px">
+            <i class="ti ti-plus" style="font-size:11px"></i> 하위 폴더 추가
+          </button>`;
+          html += `</div>`;
+        }
+        html += `</div>`;
+      });
+
+      qs("#folderList").innerHTML = html;
+
+      // 폴더 클릭
       qsa(".folder-item").forEach((button) => {
-        button.addEventListener("click", () => {
+        button.addEventListener("click", (e) => {
+          if (e.target.closest(".folder-toggle")) return;
           state.filters = normalizeFilterState(state.filters);
           state.filters.folder = button.dataset.folder;
           state.selectedFolder = state.filters.folder;
@@ -3939,6 +4284,51 @@
           renderDocs();
         });
       });
+
+      // 펼침/접힘 토글
+      qsa(".folder-toggle").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const fid = btn.dataset.fid;
+          const children = qs(`#fc_${cssId(fid)}`);
+          if (!children) return;
+          const isOpen = children.style.display !== "none";
+          children.style.display = isOpen ? "none" : "block";
+          btn.textContent = isOpen ? "▸" : "▾";
+          state._expandedFolders = state._expandedFolders || {};
+          state._expandedFolders[fid] = !isOpen;
+        });
+      });
+
+      // 하위 폴더 추가
+      qsa(".folder-add-child").forEach(btn => {
+        btn.addEventListener("click", () => openAddChildFolderModal(btn.dataset.parentId, btn.dataset.parentName));
+      });
+    }
+
+    function openAddChildFolderModal(parentId, parentName) {
+      const name = prompt(`"${parentName}" 안에 만들 하위 폴더 이름을 입력하세요:`);
+      if (!name || !name.trim()) return;
+      const newId = `${parentId}_custom_${Date.now()}`;
+      const newFolder = {
+        id: newId,
+        name: name.trim(),
+        icon: "ti-folder",
+        parentId,
+        level: 1,
+        keywords: [],
+        contextTerms: [],
+        description: `${parentName}의 하위 폴더`,
+        reason: `${parentName} > ${name.trim()}`
+      };
+      // folderRules에 추가
+      const rules = getFolderRules();
+      rules.push(newFolder);
+      state.folderRules = rules;
+      saveState();
+      renderFolderNav();
+      renderFolderFilter();
+      showToast(`"${name.trim()}" 폴더가 추가되었습니다.`, "success");
     }
 
     function renderFolderFilter() {
@@ -3978,7 +4368,7 @@
     }
 
     function renderMetrics() {
-      const docs = getCurrentSpaceDocs();
+      const docs = getCurrentTeamDocs();
       const total = docs.length;
       const high = docs.filter((doc) => doc.confidence >= 70).length;
       const avgConfidence = total ? Math.round(docs.reduce((sum, doc) => sum + doc.confidence, 0) / total) : 0;
@@ -4054,7 +4444,7 @@
     function renderDashboard() {
       const cards = qs("#dashboardCards");
       if (!cards) return;
-      const docs = getCurrentSpaceDocs().filter((doc) => !doc.archived);
+      const docs = getCurrentTeamDocs().filter((doc) => !doc.archived);
       const pendingReview = getCurrentTeamPendingReviewItems();
       const today = new Date().toISOString().slice(0, 10);
       const total = docs.length;
@@ -4302,9 +4692,125 @@
     function handleFiles(fileList) {
       const files = Array.from(fileList || []);
       if (!files.length) return;
+
+      // 폴더 업로드 감지 (webkitRelativePath 있으면 폴더)
+      const isFolderUpload = files.some(f => f.webkitRelativePath && f.webkitRelativePath.includes("/"));
+      if (isFolderUpload) {
+        const folderName = files[0].webkitRelativePath.split("/")[0];
+        scheduleFolderAnalysis(files, folderName);
+      }
+
       const batchId = files.length > 1 ? createBatchSummary(files.length) : "";
       files.forEach((file) => startProcessing(file, batchId));
       setTab("upload");
+    }
+
+    // 폴더 업로드 후 자동 하위 폴더 제안
+    async function scheduleFolderAnalysis(files, folderName) {
+      // 모든 파일 분류 완료 후 분석 (3초 지연으로 처리 후 실행)
+      setTimeout(async () => {
+        const allRecs = [];
+        for (const [id, item] of processStore.entries()) {
+          if (item.recs && item.recs.length) allRecs.push({ item, topRec: item.recs[0] });
+        }
+        if (allRecs.length < 2) return;
+
+        // 부모 폴더별 그룹화
+        const groups = {};
+        allRecs.forEach(({ item, topRec }) => {
+          const folder = getFolderRuleById(topRec.folderId);
+          const parentId = folder && folder.parentId ? folder.parentId : topRec.folderId;
+          if (!groups[parentId]) groups[parentId] = [];
+          groups[parentId].push(item);
+        });
+
+        // 3개 이상 같은 부모로 분류된 그룹에서 공통 키워드 추출
+        const suggestions = [];
+        Object.entries(groups).forEach(([parentId, items]) => {
+          if (items.length < 3) return;
+          const parent = getFolderRuleById(parentId);
+          if (!parent) return;
+          // 공통 키워드 추출
+          const wordFreq = {};
+          items.forEach(item => {
+            const words = (item.evidence.text || "").match(/[가-힣A-Za-z0-9]{2,}/g) || [];
+            words.forEach(w => { wordFreq[w] = (wordFreq[w] || 0) + 1; });
+          });
+          const topWords = Object.entries(wordFreq)
+            .filter(([w]) => !["문서","파일","자료","내용","결과","관련","기준","항목"].includes(w))
+            .sort((a,b) => b[1]-a[1])
+            .slice(0,3)
+            .map(([w]) => w);
+          if (topWords.length < 2) return;
+
+          // 이미 있는 자식 폴더와 중복 확인
+          const existingChildren = getChildFolders(parentId).map(c => c.name);
+          const suggestedName = topWords.slice(0,2).join("/");
+          if (!existingChildren.includes(suggestedName)) {
+            suggestions.push({ parentId, parentName: parent.name, suggestedName, topWords, count: items.length });
+          }
+        });
+
+        if (!suggestions.length) return;
+
+        // 제안 모달 표시
+        showFolderSuggestionModal(folderName, suggestions);
+      }, files.length * 800 + 2000);
+    }
+
+    function showFolderSuggestionModal(folderName, suggestions) {
+      const existing = document.getElementById("folderSuggestionModal");
+      if (existing) existing.remove();
+
+      const modal = document.createElement("div");
+      modal.id = "folderSuggestionModal";
+      modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:center;justify-content:center";
+
+      let rows = suggestions.map((s, i) => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <input type="checkbox" id="fsg_${i}" checked style="flex-shrink:0">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700">${escapeHTML(s.parentName)} <span style="color:var(--text-3)">›</span> <input id="fsn_${i}" value="${escapeHTML(s.suggestedName)}" style="background:var(--surface-3);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-size:12px;font-weight:700;color:var(--text)"></div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:2px">키워드: ${s.topWords.join(", ")} · ${s.count}개 파일</div>
+          </div>
+        </div>`).join("");
+
+      modal.innerHTML = `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:440px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.3)">
+          <div style="font-size:15px;font-weight:800;margin-bottom:4px"><i class="ti ti-folder-plus"></i> 새 하위 폴더 제안</div>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:14px">"${escapeHTML(folderName)}" 폴더 분석 결과 새 분류 기준이 발견됐습니다.</div>
+          <div style="max-height:260px;overflow-y:auto">${rows}</div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+            <button id="fsgCancel" class="btn" type="button">건너뛰기</button>
+            <button id="fsgConfirm" class="btn btn-primary" type="button"><i class="ti ti-check"></i> 선택 폴더 생성</button>
+          </div>
+        </div>`;
+
+      document.body.appendChild(modal);
+
+      document.getElementById("fsgCancel").onclick = () => modal.remove();
+      document.getElementById("fsgConfirm").onclick = () => {
+        suggestions.forEach((s, i) => {
+          const cb = document.getElementById(`fsg_${i}`);
+          const nameInput = document.getElementById(`fsn_${i}`);
+          if (cb && cb.checked && nameInput && nameInput.value.trim()) {
+            const newId = `${s.parentId}_auto_${Date.now()}_${i}`;
+            const rules = getFolderRules();
+            rules.push({
+              id: newId, name: nameInput.value.trim(), icon: "ti-folder-filled",
+              parentId: s.parentId, level: 1,
+              keywords: s.topWords, contextTerms: [],
+              description: `${s.parentName}의 자동 생성 하위 폴더`
+            });
+            state.folderRules = rules;
+          }
+        });
+        saveState();
+        renderFolderNav();
+        renderFolderFilter();
+        modal.remove();
+        showToast("하위 폴더가 생성됐습니다.", "success");
+      };
     }
 
     async function startProcessing(file, batchId = "") {
@@ -4352,19 +4858,13 @@
       wrapper.className = "process-card";
       wrapper.dataset.processId = id;
       wrapper.innerHTML = `
-        <div class="process-head">
-          <div class="process-title"><i class="ti ti-file-text"></i><span title="${escapeAttr(item.fileName)}">${escapeHTML(item.fileName)}</span></div>
-          <span class="badge info" data-role="status">처리 중</span>
-          <button class="btn icon-btn" type="button" title="미리보기" data-action="preview-doc" data-doc-id="${escapeAttr(item.id)}"><i class="ti ti-eye"></i></button>
+        <div class="pc-row">
+          <i class="ti ti-file-text pc-icon"></i>
+          <span class="pc-name pc-name-link" title="${escapeAttr(item.fileName)}" data-action="open-preview" data-process-id="${escapeAttr(id)}" style="cursor:pointer;">${escapeHTML(item.fileName)}</span>
+          <span class="pc-phase-label" data-role="phase-label">1단계 분석 중</span>
+          <div class="pc-spinner" data-role="spinner"></div>
         </div>
-        <div class="process-body">
-          <div class="phase-stack">
-            ${renderPhase(id, 1, "1단계: 병렬 전처리 — 핵심 구역 파싱", `${escapeHTML(item.evidence.mode)} 증거 패키지 구성`)}
-            ${renderPhase(id, 2, "2단계: 자연어 사전 정규화", "현업 표현을 표준 용어로 변환")}
-            ${renderPhase(id, 3, "3단계: 하이브리드 분류", "폴더 키워드와 정규화 단서 기반 Top 3 산출")}
-          </div>
-          <div class="result-area" data-role="result"></div>
-        </div>
+        <div class="pc-detail" data-role="result"></div>
       `;
       return wrapper;
     }
@@ -4382,6 +4882,319 @@
       `;
     }
 
+    // ══════════════════════════════════════════════════════════════
+    //  폴더 구조 가져오기 (팀 맞춤 분류 기준 생성)
+    // ══════════════════════════════════════════════════════════════
+
+    async function handleStructureImport(fileList) {
+      const files = Array.from(fileList).filter(f => f.webkitRelativePath);
+      if (!files.length) { showToast("폴더를 선택해주세요.", "warn"); return; }
+
+      const rootFolder = files[0].webkitRelativePath.split("/")[0];
+      const teamId = getCurrentTeamId();
+
+      // ① 폴더 구조 파악
+      const folderMap = buildFolderMap(files);
+      showStructureProgressModal(rootFolder, folderMap, files, teamId);
+    }
+
+    function buildFolderMap(files) {
+      // { "계획서": [file, file], "회의록": [file], ... }
+      const map = {};
+      files.forEach(f => {
+        const parts = f.webkitRelativePath.split("/");
+        if (parts.length < 2) return; // 루트 파일은 무시
+        // 최대 2단계: [root, folder, ...file] or [root, file]
+        const folderKey = parts.length >= 3
+          ? `${parts[1]}/${parts[2].includes(".") ? "" : parts[2]}`.replace(/\/$/, "")
+          : parts[1].includes(".") ? "__root__" : parts[1];
+        if (folderKey === "__root__") return;
+        if (!map[folderKey]) map[folderKey] = [];
+        if (!f.name.startsWith(".")) map[folderKey].push(f);
+      });
+      // 빈 폴더 제거
+      Object.keys(map).forEach(k => { if (!map[k].length) delete map[k]; });
+      return map;
+    }
+
+    function showStructureProgressModal(rootFolder, folderMap, allFiles, teamId) {
+      const backdrop = document.createElement("div");
+      backdrop.id = "structureImportBackdrop";
+      backdrop.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;display:flex;align-items:center;justify-content:center";
+
+      const folderEntries = Object.entries(folderMap);
+      const totalFiles = allFiles.filter(f => !f.name.startsWith(".")).length;
+
+      backdrop.innerHTML = `
+        <div class="struct-modal">
+          <div class="struct-modal-header">
+            <div>
+              <div style="font-size:15px;font-weight:800"><i class="ti ti-folder-plus"></i> 폴더 구조 가져오기</div>
+              <div style="font-size:11px;color:var(--text-3);margin-top:2px">${escapeHTML(rootFolder)} · 폴더 ${folderEntries.length}개 · 파일 ${totalFiles}개</div>
+            </div>
+          </div>
+          <div class="struct-modal-body">
+            <div style="margin-bottom:12px">
+              <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:4px" id="structStatusText">파일 업로드 및 분석 중...</div>
+              <div class="struct-progress"><div class="struct-progress-fill" id="structProgressFill" style="width:0%"></div></div>
+              <div style="font-size:11px;color:var(--text-3);margin-top:4px" id="structProgressLabel">준비 중...</div>
+            </div>
+            <div id="structFolderList">
+              ${folderEntries.map(([name]) => `
+                <div class="struct-folder-row" id="sf_${cssId(name)}">
+                  <div class="struct-folder-header">
+                    <i class="ti ti-folder" style="color:var(--accent)"></i>
+                    <span class="struct-folder-name">${escapeHTML(name)}</span>
+                    <span class="struct-folder-meta" id="sfm_${cssId(name)}">분석 대기 중...</span>
+                  </div>
+                  <div class="struct-folder-keywords" id="sfk_${cssId(name)}" style="display:none"></div>
+                </div>`).join("")}
+            </div>
+          </div>
+          <div class="struct-modal-footer">
+            <button class="btn" id="structCancelBtn" type="button">취소</button>
+            <button class="btn btn-primary" id="structApplyBtn" type="button" disabled><i class="ti ti-check"></i> 이 팀에 분류 기준 적용</button>
+          </div>
+        </div>`;
+
+      document.body.appendChild(backdrop);
+      document.getElementById("structCancelBtn").onclick = () => backdrop.remove();
+
+      // 분석 시작
+      analyzeAndBuildRules(folderMap, allFiles, teamId).then(generatedRules => {
+        document.getElementById("structApplyBtn").disabled = false;
+        document.getElementById("structStatusText").textContent = "분석 완료 — 분류 기준을 확인하고 적용해주세요";
+        document.getElementById("structProgressFill").style.width = "100%";
+        document.getElementById("structProgressLabel").textContent = `${folderEntries.length}개 폴더 분석 완료`;
+
+        document.getElementById("structApplyBtn").onclick = async () => {
+          await applyCustomFolderRules(teamId, generatedRules);
+          backdrop.remove();
+          renderFolderNav();
+          renderFolderFilter();
+          showToast(`"${rootFolder}" 구조가 "${getCurrentTeamName()}" 팀의 분류 기준으로 설정됐습니다.`, "success");
+        };
+      }).catch(err => {
+        document.getElementById("structStatusText").textContent = "분석 중 오류 발생: " + err.message;
+      });
+    }
+
+    async function analyzeAndBuildRules(folderMap, allFiles, teamId) {
+      const folderEntries = Object.entries(folderMap);
+      const totalFiles = folderEntries.reduce((s,[,files]) => s + files.length, 0);
+      let processed = 0;
+      const generatedRules = [];
+
+      for (const [folderName, files] of folderEntries) {
+        const meta = document.getElementById(`sfm_${cssId(folderName)}`);
+        const kwBox = document.getElementById(`sfk_${cssId(folderName)}`);
+        if (meta) meta.textContent = `분석 중 (0/${files.length})`;
+
+        // ① Firebase Storage에 파일 업로드 (있는 경우)
+        const storageUrls = {};
+        if (window._fbStorage && window._fbFunctions) {
+          for (const file of files.slice(0, 10)) { // 폴더당 최대 10개 업로드
+            try {
+              const { ref, uploadBytes, getDownloadURL } = window._fbFunctions;
+              const path = `teams/${teamId}/structure/${encodeURIComponent(folderName)}/${Date.now()}_${file.name}`;
+              const sref = ref(window._fbStorage, path);
+              await uploadBytes(sref, file);
+              storageUrls[file.name] = await getDownloadURL(sref);
+            } catch(e) { /* 업로드 실패해도 로컬 분석 계속 */ }
+          }
+        }
+
+        // ② 텍스트 추출 + 키워드 집계
+        const wordFreq = {};
+        const fileNameWords = [];
+        let analyzedCount = 0;
+
+        for (const file of files) {
+          try {
+            const ft = getFileType(file);
+            let text = "";
+
+            if (ft === "pdf" && typeof pdfjsLib !== "undefined") {
+              const ab = await file.arrayBuffer();
+              const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+              for (let p = 1; p <= Math.min(pdf.numPages, 5); p++) {
+                const page = await pdf.getPage(p);
+                const content = await page.getTextContent();
+                text += content.items.map(i => i.str).join(" ");
+              }
+            } else if (ft === "docx" && typeof mammoth !== "undefined") {
+              const ab = await file.arrayBuffer();
+              const res = await mammoth.extractRawText({ arrayBuffer: ab });
+              text = res.value || "";
+            } else if (ft === "txt" || ft === "csv") {
+              text = await file.text();
+            } else if (ft === "xlsx" && typeof XLSX !== "undefined") {
+              const ab = await file.arrayBuffer();
+              const wb = XLSX.read(ab, { type: "array" });
+              wb.SheetNames.slice(0, 2).forEach(n => {
+                const ws = wb.Sheets[n];
+                text += XLSX.utils.sheet_to_csv(ws).slice(0, 2000);
+              });
+            }
+
+            // 파일명에서 단어 추출
+            fileNameWords.push(...file.name.replace(/\.[^.]+$/, "").split(/[\s_\-\.]+/).filter(w => w.length >= 2));
+
+            // 텍스트 단어 빈도
+            const words = text.match(/[가-힣A-Za-z0-9]{2,}/g) || [];
+            const stopWords = new Set(["그리고","그러나","입니다","합니다","있는","없는","대한","관련","문서","자료","파일","페이지","내용","확인","the","and","for","with","this","that"]);
+            words.forEach(w => {
+              if (!stopWords.has(w) && !w.match(/^\d+$/)) {
+                wordFreq[w] = (wordFreq[w] || 0) + 1;
+              }
+            });
+
+            analyzedCount++;
+            processed++;
+            if (meta) meta.textContent = `분석 중 (${analyzedCount}/${files.length})`;
+            const pct = Math.round((processed / totalFiles) * 100);
+            const fill = document.getElementById("structProgressFill");
+            const label = document.getElementById("structProgressLabel");
+            if (fill) fill.style.width = pct + "%";
+            if (label) label.textContent = `${processed}/${totalFiles} 파일 처리됨`;
+
+          } catch(e) { /* 파일 분석 실패 무시 */ }
+        }
+
+        // ③ 상위 키워드 추출
+        const topKeywords = Object.entries(wordFreq)
+          .sort((a,b) => b[1]-a[1])
+          .slice(0, 20)
+          .map(([w]) => w);
+
+        // 파일명 기반 키워드도 합산
+        const nameWordFreq = {};
+        fileNameWords.forEach(w => { nameWordFreq[w] = (nameWordFreq[w] || 0) + 1; });
+        const topNameWords = Object.entries(nameWordFreq)
+          .sort((a,b) => b[1]-a[1])
+          .slice(0, 8)
+          .map(([w]) => w)
+          .filter(w => !topKeywords.includes(w));
+
+        const allKeywords = [...new Set([...topNameWords, ...topKeywords])].slice(0, 25);
+        const contextTerms = topKeywords.slice(5, 15);
+
+        // ④ 폴더명 자체도 키워드로 추가
+        const folderNameWords = folderName.split(/[\s\/\-_]+/).filter(w => w.length >= 2);
+
+        if (meta) meta.textContent = `완료 (${files.length}개 파일, 키워드 ${allKeywords.length}개)`;
+        if (kwBox) {
+          kwBox.style.display = "block";
+          kwBox.innerHTML = `
+            <div style="font-size:11px;font-weight:700;color:var(--text-3);margin-bottom:4px">추출된 키워드 (수정 가능)</div>
+            <div id="sfkw_${cssId(folderName)}">
+              ${allKeywords.slice(0,15).map(kw => `<span class="struct-kw-tag" contenteditable="false">${escapeHTML(kw)}</span>`).join("")}
+            </div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+              <input id="sfname_${cssId(folderName)}" value="${escapeHTML(folderName)}" style="background:var(--surface-3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;font-weight:700;color:var(--text);flex:1" placeholder="폴더 이름">
+              <label style="font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:4px">
+                <input type="checkbox" id="sfcheck_${cssId(folderName)}" checked style="margin:0"> 포함
+              </label>
+            </div>`;
+        }
+
+        // 규칙 생성
+        const folderId = `custom_${folderName.replace(/[\s\/]/g, "_")}_${Date.now()}`.slice(0, 40);
+        generatedRules.push({
+          id: folderId,
+          name: folderName,
+          icon: "ti-folder-filled",
+          keywords: [...folderNameWords, ...allKeywords].slice(0, 25),
+          contextTerms,
+          description: `${folderName} (${files.length}개 파일에서 자동 생성)`,
+          reason: `"${folderName}" 폴더의 ${files.length}개 파일 분석 결과`,
+          parentId: null,
+          level: 0,
+          isCustom: true,
+          fileCount: files.length,
+          storageUrls,
+          _folderKey: cssId(folderName)
+        });
+      }
+
+      // 사용자가 이름 변경했을 때 반영
+      generatedRules.forEach(rule => {
+        const nameInput = document.getElementById(`sfname_${rule._folderKey}`);
+        if (nameInput) rule.name = nameInput.value.trim() || rule.name;
+        const check = document.getElementById(`sfcheck_${rule._folderKey}`);
+        rule._include = !check || check.checked;
+      });
+
+      return generatedRules.filter(r => r._include !== false);
+    }
+
+    async function applyCustomFolderRules(teamId, rules) {
+      // Firestore에 저장
+      if (window._fbDb && window._fbFunctions) {
+        try {
+          const { collection, addDoc, getDocs, query, where, deleteDoc, doc } = window._fbFunctions;
+          // 기존 커스텀 규칙 삭제
+          const q = query(collection(window._fbDb, "customFolderRules"), where("teamId", "==", teamId));
+          const snap = await getDocs(q);
+          for (const d of snap.docs) await deleteDoc(doc(window._fbDb, "customFolderRules", d.id));
+          // 새 규칙 저장
+          for (const rule of rules) {
+            await addDoc(collection(window._fbDb, "customFolderRules"), {
+              ...rule, teamId,
+              createdAt: new Date().toISOString()
+            });
+          }
+        } catch(e) { console.warn("Firestore 저장 실패:", e); }
+      }
+
+      // 로컬 state에도 반영
+      state.folderRulesByTeam = state.folderRulesByTeam || {};
+      const cleanRules = rules.map(({ _folderKey, _include, ...r }) => r);
+      state.folderRulesByTeam[teamId] = cleanRules;
+      state.folderRules = cleanRules;
+      state._hasCustomRules = state._hasCustomRules || {};
+      state._hasCustomRules[teamId] = true;
+      saveState();
+    }
+
+    async function loadCustomFolderRules(teamId) {
+      if (!window._fbDb || !window._fbFunctions) return null;
+      try {
+        const { collection, getDocs, query, where } = window._fbFunctions;
+        const q = query(collection(window._fbDb, "customFolderRules"), where("teamId", "==", teamId));
+        const snap = await getDocs(q);
+        if (snap.empty) return null;
+        return snap.docs.map(d => d.data());
+      } catch(e) { return null; }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+
+    async function boostWithEmbeddings(recs, text) {
+      if (!window._embeddingReady || !window._embeddingModel) return recs;
+      try {
+        const input  = text.slice(0, 512);
+        const out    = await window._embeddingModel(input, { pooling:"mean", normalize:true });
+        const docVec = Array.from(out.data);
+        const boosted = recs.map(rec => {
+          const fv = window._folderEmbeddings[rec.folderId];
+          if (!fv) return rec;
+          const sim      = window._cosine(docVec, fv);
+          // sim 범위 0~1, 0.5 이상부터 의미 있는 유사도로 간주 → 최대 30점
+          const embScore = Math.round(Math.max(0, (sim - 0.45) / 0.55) * 30);
+          return { ...rec,
+            score:          Math.min(96, rec.score + embScore),
+            embeddingScore: embScore,
+            embeddingSim:   Math.round(sim * 100),
+          };
+        });
+        return boosted.sort((a, b) => b.score - a.score);
+      } catch(e) {
+        console.warn("임베딩 스코어 계산 실패:", e);
+        return recs;
+      }
+    }
+
     async function runPipeline(id, file) {
       const item = processStore.get(id);
       if (!item) return;
@@ -4394,6 +5207,10 @@
       item.foundTerms = getDictionaryHits(`${item.fileName} ${item.evidence.text}`);
       await runPhase(id, 3, 520);
       item.recs = classifyDocument(item.fileName, item.evidence.text);
+      // 임베딩 기반 의미 점수 보강 (모델 준비된 경우)
+      if (window._embeddingReady) {
+        item.recs = await boostWithEmbeddings(item.recs, `${item.fileName} ${item.evidence.text}`);
+      }
       item.decision = getClassificationDecision(item.recs);
       item.versionWarning = detectVersion(item.fileName);
       item.reviewNeeded = item.decision.status === "review_required";
@@ -4415,11 +5232,14 @@
       });
     }
 
+    const PHASE_LABELS = ["", "텍스트 추출 중", "용어 정규화 중", "분류 분석 중"];
     function setPhaseState(id, phase, stateName) {
-      const number = qs(`#${cssId(id)}-phase-${phase}`);
-      if (!number) return;
-      number.className = `phase-number ${stateName}`;
-      number.innerHTML = stateName === "done" ? `<i class="ti ti-check"></i>` : String(phase);
+      const card = qs(`[data-process-id="${cssAttr(id)}"]`);
+      if (!card) return;
+      const label = qs("[data-role='phase-label']", card);
+      if (label && stateName === "running") {
+        label.textContent = PHASE_LABELS[phase] || `${phase}단계`;
+      }
     }
 
     function completeProcess(id) {
@@ -4427,108 +5247,176 @@
       const item = processStore.get(id);
       if (!card || !item) return;
       const decision = item.decision || getClassificationDecision(item.recs);
-      const status = qs("[data-role='status']", card);
-      status.className = `badge ${decision.className}`;
-      status.textContent = `${decision.label} · ${item.elapsed}초`;
+      const top = item.recs[item.selectedIndex] || item.recs[0] || {};
+      const score = Number(top.score || 0);
+      const barClass = score >= 70 ? "" : score >= 40 ? "mid" : "low";
+      const decisionColors = { auto_ready: "success", confirm_required: "warn", review_required: "danger" };
+      const decisionIcons = { auto_ready: "ti-bolt", confirm_required: "ti-user-check", review_required: "ti-clipboard-check" };
+      const decClass = decisionColors[decision.status] || "info";
+      const decIcon = decisionIcons[decision.status] || "ti-info-circle";
+
+      // 컴팩트 행 교체
+      const pcRow = qs(".pc-row", card);
+      if (pcRow) {
+        pcRow.innerHTML = `
+          <i class="ti ti-file-text pc-icon"></i>
+          <span class="pc-name pc-name-link" title="${escapeAttr(item.fileName)}" data-action="open-preview" data-process-id="${escapeAttr(id)}" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;">${escapeHTML(item.fileName)}</span>
+          <div class="pc-result-row">
+            <span class="pc-folder"><i class="ti ${escapeHTML(top.icon || "ti-folder")}"></i> ${escapeHTML(top.folder || "-")}</span>
+            <div class="pc-bar-wrap">
+              <div class="pc-bar-bg"><div class="pc-bar-fill ${barClass}" style="width:${score}%"></div></div>
+            </div>
+            <span class="pc-score">${score}%</span>
+            <span class="badge ${decClass}"><i class="ti ${decIcon}"></i> ${escapeHTML(decision.label)}</span>
+            ${item.saved
+              ? `<span class="badge success"><i class="ti ti-check"></i>저장됨</span>`
+              : `<button class="btn btn-primary" style="padding:3px 10px;font-size:11px" type="button" data-action="save-doc" data-process-id="${escapeAttr(id)}" data-save-mode="separate"><i class="ti ti-check"></i>저장</button>`
+            }
+          </div>
+          <button class="pc-expand-btn" type="button" data-action="toggle-detail" data-process-id="${escapeAttr(id)}" title="상세 보기">
+            <i class="ti ti-chevron-down"></i>
+          </button>
+        `;
+      }
+
+      // 상세 영역 (기본 접힘)
       const result = qs("[data-role='result']", card);
-      result.classList.add("show");
-      result.innerHTML = renderResult(item);
+      result.innerHTML = renderCompactDetail(item);
+
       if (item.reviewNeeded) enqueueReviewItem(item);
       updateBatchSummary(item);
       if (state.autoSaveEnabled && decision.status === "auto_ready" && !item.backendDuplicateWarning && !item.duplicateWarning) {
         item.autoSavePending = true;
-        refreshProcessResult(id);
         saveProcessedDoc(id, "auto", { auto: true });
       }
     }
 
-    async function analyzeFileEvidence(file, fileName, fileType) {
-      const fallback = buildEvidencePackage(fileName, fileType);
+    function renderCompactDetail(item) {
+      const decision = item.decision || getClassificationDecision(item.recs);
+      const warns = [
+        item.versionWarning ? `<span class="pc-warn"><i class="ti ti-alert-triangle"></i>기존 문서의 수정본일 수 있습니다.</span>` : "",
+        item.reviewNeeded ? `<span class="pc-warn"><i class="ti ti-clipboard-check"></i>신뢰도가 낮아 담당자 확인이 필요합니다.</span>` : "",
+        (item.backendDuplicateWarning || item.duplicateWarning) ? `<span class="pc-warn"><i class="ti ti-copy"></i>유사/중복 문서가 있습니다.</span>` : "",
+      ].filter(Boolean).join("");
 
-      if (!["pdf", "docx", "txt", "hwpx", "pptx", "xlsx", "csv", "hwp", "image"].includes(fileType)) {
-        return {
-          ...fallback,
-          extractionStatus: "unsupported",
-          backendStatusText: "현재 지원하지 않는 형식은 시뮬레이션 처리",
-          backendOk: false
-        };
+      const top3 = item.recs.slice(0, 3).map((rec, index) => {
+        const s = Number(rec.score || 0);
+        const bc = s >= 70 ? "" : s >= 40 ? "mid" : "low";
+        return `
+          <div class="pc-top3-item ${item.selectedIndex === index ? "selected" : ""}"
+               data-action="select-rec" data-process-id="${escapeAttr(item.id)}" data-index="${index}">
+            <div class="pc-top3-name"><i class="ti ${escapeHTML(rec.icon || "ti-folder")}"></i>${escapeHTML(rec.folder)}</div>
+            <div class="pc-top3-bar"><div class="pc-top3-fill ${bc}" style="width:${s}%"></div></div>
+            <div class="pc-top3-score">${s}%${rec.embeddingScore > 0 ? ` <span style="color:var(--accent-2);font-size:10px" title="의미 유사도 점수">+${rec.embeddingScore}AI</span>` : ""}</div>
+          </div>`;
+      }).join("");
+
+      const saveControls = item.saved
+        ? `<span class="badge success"><i class="ti ti-check"></i>${item.autoSaved ? "자동 저장됨" : "저장됨"}</span>`
+        : item.backendDuplicateWarning
+          ? `<button class="btn btn-primary" type="button" data-action="save-doc" data-process-id="${escapeAttr(item.id)}" data-save-mode="version"><i class="ti ti-git-branch"></i>새 버전으로</button>
+             <button class="btn" type="button" data-action="save-doc" data-process-id="${escapeAttr(item.id)}" data-save-mode="separate"><i class="ti ti-file-plus"></i>별도 저장</button>`
+          : `<button class="btn btn-primary" type="button" data-action="save-doc" data-process-id="${escapeAttr(item.id)}" data-save-mode="separate"><i class="ti ti-check"></i>확인 및 저장</button>`;
+
+      return `
+        <div class="pc-top3">${top3}</div>
+        <div class="pc-summary">${escapeHTML(item.summary || "")}</div>
+        ${warns}
+        <div class="pc-save-row">${saveControls}</div>
+      `;
+    }
+
+    async function analyzeFileEvidence(file, fileName, fileType) {
+      // PDF.js worker 설정
+      if (typeof pdfjsLib !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
       }
 
+      const fallback = buildEvidencePackage(fileName, fileType);
+
       try {
-        const formData = new FormData();
-        formData.append("file", file, fileName);
-        const response = await fetchApi("/api/analyze", {
-          method: "POST",
-          body: formData
-        }, 12000);
-
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-
-        if (data.ok && data.extraction_status === "success" && data.evidence_package) {
-          return {
-            mode: data.mode || "PyMuPDF 실제 텍스트 추출",
-            text: data.evidence_package,
-            pageCount: data.page_count || 0,
-            extractionStatus: data.extraction_status,
-            backendStatusText: `${data.mode || "실제 텍스트 추출"} 완료`,
-            backendOk: true,
-            backendWarning: data.warning || "",
-            backendProcessingTimeSec: data.processing_time_sec || 0
-          };
+        // PDF
+        if (fileType === "pdf" && typeof pdfjsLib !== 'undefined') {
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          const pageCount = pdf.numPages;
+          let allText = "";
+          for (let i = 1; i <= Math.min(pageCount, 30); i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            allText += content.items.map(item => item.str).join(" ") + "\n";
+          }
+          allText = allText.trim();
+          if (allText.length < 50) {
+            return { ...fallback, extractionStatus: "no_text_layer", backendStatusText: "텍스트 레이어 없음 (스캔본)", backendOk: false, backendWarning: "OCR 처리가 필요합니다.", pageCount };
+          }
+          return { mode: "PDF.js 브라우저 텍스트 추출", text: allText.slice(0, 4000), pageCount, extractionStatus: "success", backendStatusText: "PDF.js 브라우저 추출 완료", backendOk: true, backendWarning: "" };
         }
 
-        if (data.extraction_status === "unsupported") {
-          return {
-            ...fallback,
-            extractionStatus: "unsupported",
-            backendStatusText: data.warning || "미지원 형식 - 시뮬레이션 처리",
-            backendOk: false,
-            backendWarning: data.warning || ""
-          };
+        // DOCX
+        if (fileType === "docx" && typeof mammoth !== 'undefined') {
+          const arrayBuffer = await file.arrayBuffer();
+          const result = await mammoth.extractRawText({ arrayBuffer });
+          const text = (result.value || "").trim();
+          if (!text) return { ...fallback, extractionStatus: "no_text_layer", backendStatusText: "DOCX 텍스트 없음", backendOk: false, backendWarning: "" };
+          return { mode: "mammoth.js 브라우저 텍스트 추출", text: text.slice(0, 4000), pageCount: 0, extractionStatus: "success", backendStatusText: "mammoth.js 브라우저 추출 완료", backendOk: true, backendWarning: "" };
         }
 
-        if (data.extraction_status === "ocr_required") {
-          return {
-            ...fallback,
-            extractionStatus: "ocr_required",
-            backendStatusText: data.warning || "OCR 처리가 필요합니다.",
-            backendOk: false,
-            backendWarning: data.warning || ""
-          };
+        // XLSX
+        if (fileType === "xlsx" && typeof XLSX !== 'undefined') {
+          const arrayBuffer = await file.arrayBuffer();
+          const wb = XLSX.read(arrayBuffer, { type: "array" });
+          let text = "시트명: " + wb.SheetNames.join(", ") + "\n";
+          wb.SheetNames.slice(0, 3).forEach(name => {
+            const ws = wb.Sheets[name];
+            const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+            rows.slice(0, 50).forEach(row => {
+              const line = row.filter(c => c !== "").join(" | ");
+              if (line.trim()) text += line + "\n";
+            });
+          });
+          if (text.length < 10) return { ...fallback, extractionStatus: "no_text_layer", backendStatusText: "XLSX 텍스트 없음", backendOk: false, backendWarning: "" };
+          return { mode: "SheetJS 브라우저 텍스트 추출", text: text.slice(0, 4000), pageCount: 0, extractionStatus: "success", backendStatusText: "SheetJS 브라우저 추출 완료", backendOk: true, backendWarning: "" };
         }
 
-        if (data.ok && data.extraction_status === "no_text_layer") {
-          const noTextMessage = fileType === "pptx"
-            ? "PPTX에서 추출 가능한 텍스트가 부족합니다. 이미지형 슬라이드는 OCR 처리가 필요합니다."
-            : ["xlsx", "csv"].includes(fileType)
-              ? "표에서 추출 가능한 텍스트가 부족합니다."
-              : "PDF 파일은 열었지만 추출 가능한 텍스트가 부족합니다. OCR 처리가 필요합니다.";
-          return {
-            ...fallback,
-            pageCount: data.page_count || 0,
-            extractionStatus: "no_text_layer",
-            backendStatusText: data.warning || noTextMessage,
-            backendOk: false,
-            backendWarning: data.warning || ""
-          };
+        // TXT / CSV
+        if (fileType === "txt" || fileType === "csv") {
+          const text = await file.text();
+          if (!text.trim()) return { ...fallback, extractionStatus: "no_text_layer", backendStatusText: "텍스트 없음", backendOk: false, backendWarning: "" };
+          return { mode: "FileReader 브라우저 텍스트 추출", text: text.slice(0, 4000), pageCount: 0, extractionStatus: "success", backendStatusText: "브라우저 직접 추출 완료", backendOk: true, backendWarning: "" };
         }
 
-        return {
-          ...fallback,
-          extractionStatus: data.extraction_status || "failed",
-          backendStatusText: "텍스트 추출 실패 - 시뮬레이션 모드 사용",
-          backendOk: false,
-          backendWarning: data.warning || "텍스트 추출 실패"
-        };
+        // HWPX
+        if (fileType === "hwpx" && typeof JSZip !== 'undefined') {
+          const arrayBuffer = await file.arrayBuffer();
+          const zip = await JSZip.loadAsync(arrayBuffer);
+          let text = "";
+          const files = Object.keys(zip.files);
+          for (const name of files) {
+            if (name.toLowerCase().includes("preview") && name.toLowerCase().endsWith(".txt")) {
+              text = await zip.files[name].async("string");
+              break;
+            }
+            if (name.toLowerCase().startsWith("contents/") && name.toLowerCase().endsWith(".xml")) {
+              const xml = await zip.files[name].async("string");
+              text += xml.replace(/<[^>]+>/g, " ") + " ";
+            }
+          }
+          text = text.replace(/\s+/g, " ").trim();
+          if (text.length < 50) return { ...fallback, extractionStatus: "failed", backendStatusText: "HWPX 텍스트 추출 실패", backendOk: false, backendWarning: "" };
+          return { mode: "JSZip HWPX 브라우저 추출", text: text.slice(0, 4000), pageCount: 0, extractionStatus: "success", backendStatusText: "HWPX 브라우저 추출 완료", backendOk: true, backendWarning: "" };
+        }
+
+        // 이미지
+        if (fileType === "image") {
+          return { ...fallback, extractionStatus: "ocr_required", backendStatusText: "이미지 문서는 OCR 처리가 필요합니다.", backendOk: false, backendWarning: "이미지 문서는 OCR 처리가 필요합니다." };
+        }
+
+        // 나머지 fallback
+        return { ...fallback, extractionStatus: "unsupported", backendStatusText: "지원하지 않는 형식 - 파일명 기반 분류", backendOk: false, backendWarning: "" };
+
       } catch (error) {
-        return {
-          ...fallback,
-          extractionStatus: "backend_failed",
-          backendStatusText: "백엔드 연결 실패 - 시뮬레이션 모드 사용",
-          backendOk: false,
-          backendWarning: error && error.name === "AbortError" ? "백엔드 응답 시간 초과" : "백엔드 연결 실패"
-        };
+        return { ...fallback, extractionStatus: "failed", backendStatusText: "브라우저 추출 실패 - 파일명 기반 분류", backendOk: false, backendWarning: String(error) };
       }
     }
 
@@ -4539,7 +5427,6 @@
         const formData = new FormData();
         formData.append("file", item.fileObject, item.fileName);
         formData.append("team_id", item.teamId || getCurrentTeamId());
-        formData.append("space_id", state.spaceId || "");
         formData.append("category", top.folder || "");
         formData.append("category_id", top.folderId || "");
         formData.append("summary", buildSummary(item.fileName, top, item.foundTerms || []));
@@ -4858,13 +5745,28 @@
       if (!actionTarget) return;
       if (actionTarget.dataset.action === "preview-doc") {
         const docId = actionTarget.dataset.docId;
-        if (docId) {
-          openDocumentPreview(docId);
-          return;
+        if (docId) { openDocumentPreview(docId); return; }
+      }
+      if (actionTarget.dataset.action === "open-preview") {
+        if (typeof window.openClassifyPreview === "function") {
+          window.openClassifyPreview(actionTarget.dataset.processId);
         }
+        return;
       }
       const id = actionTarget.dataset.processId;
       const item = processStore.get(id);
+
+      // 상세 토글 (id 없어도 동작)
+      if (actionTarget.dataset.action === "toggle-detail") {
+        const card = qs(`[data-process-id="${cssAttr(id)}"]`);
+        if (!card) return;
+        const detail = qs("[data-role='result']", card);
+        const btn = qs(".pc-expand-btn", card);
+        if (detail) detail.classList.toggle("show");
+        if (btn) btn.classList.toggle("open");
+        return;
+      }
+
       if (!item) return;
       if (actionTarget.dataset.action === "select-rec") {
         item.selectedIndex = Number(actionTarget.dataset.index || 0);
@@ -4884,7 +5786,14 @@
       const card = qs(`[data-process-id="${cssAttr(id)}"]`);
       const item = processStore.get(id);
       if (!card || !item) return;
-      qs("[data-role='result']", card).innerHTML = renderResult(item);
+      // 컴팩트 상세 영역 갱신
+      const detail = qs("[data-role='result']", card);
+      if (detail) detail.innerHTML = renderCompactDetail(item);
+      // 컴팩트 행의 저장 버튼 상태 갱신
+      const saveBtn = qs(".pc-row [data-action='save-doc']", card);
+      if (saveBtn && item.saved) {
+        saveBtn.outerHTML = `<span class="badge success"><i class="ti ti-check"></i>저장됨</span>`;
+      }
     }
 
     async function saveProcessedDoc(id, saveMode = "separate", options = {}) {
@@ -5009,16 +5918,42 @@
         queuedReviewItem.resolvedCategoryId = selected.folderId;
       }
       state.docs.unshift(doc);
+
+      // Firebase Firestore에 저장
+      if (window._fbDb && window._fbFunctions) {
+        try {
+          const { collection, addDoc, serverTimestamp } = window._fbFunctions;
+          const teamId = doc.teamId || "personal";
+          const firestoreDoc = {
+            ...doc,
+            createdAt: serverTimestamp(),
+            teamId
+          };
+          const docRef = await addDoc(collection(window._fbDb, "documents"), firestoreDoc);
+          doc.firestoreId = docRef.id;
+
+          // Firebase Storage에 원본 파일 저장
+          if (item.fileObject && window._fbStorage) {
+            const { ref, uploadBytes } = window._fbFunctions;
+            const storageRef = ref(window._fbStorage, `uploads/${teamId}/${docRef.id}/${item.fileName}`);
+            await uploadBytes(storageRef, item.fileObject);
+          }
+        } catch (e) {
+          console.warn("Firestore 저장 실패:", e);
+        }
+      }
+
       rememberLearnedExample(item, selected, today);
       removeReviewItem(id);
       item.saved = true;
       item.autoSaved = isAutoSave;
       item.autoSavePending = false;
-      const statusBadge = qs(`[data-process-id="${cssAttr(id)}"] [data-role='status']`);
-      if (statusBadge) {
-        statusBadge.className = "badge success";
-        statusBadge.textContent = isAutoSave ? "자동 분류 저장됨" : "저장됨";
+      // 컴팩트 행 저장 버튼 → 저장됨 배지로 교체
+      const saveBtn = qs(`[data-process-id="${cssAttr(id)}"] .pc-row [data-action='save-doc']`);
+      if (saveBtn) {
+        saveBtn.outerHTML = `<span class="badge success"><i class="ti ti-check"></i>${isAutoSave ? "자동 저장됨" : "저장됨"}</span>`;
       }
+      refreshProcessResult(id);
       saveState();
       if (backendSaved) {
         await loadDocumentsFromBackend(true);
@@ -5045,7 +5980,6 @@
       const formData = new FormData();
       formData.append("file", file, doc.filename);
       formData.append("team_id", doc.teamId || getCurrentTeamId());
-      formData.append("space_id", state.spaceId || "");
       formData.append("category", doc.category || "");
       formData.append("category_id", doc.categoryId || "");
       formData.append("summary", doc.summary || "");
@@ -5521,8 +6455,35 @@
         feedbackExamples: otherFeedback.examples
       });
 
-      return [...nonOther, otherRec]
-        .sort((a, b) => b.score - a.score || folderIndex(a.folder) - folderIndex(b.folder))
+      // ── 계층 분류: 자식 폴더 우선 탐색 ──────────────────────────
+      // 자식 폴더(level:1) 중 점수 60점↑ → 자식으로 확정
+      // 그렇지 않으면 부모 폴더 점수 사용
+      const childRecs  = nonOther.filter(r => {
+        const f = getFolderRuleById(r.folderId);
+        return f && f.level === 1;
+      });
+      const parentRecs = nonOther.filter(r => {
+        const f = getFolderRuleById(r.folderId);
+        return !f || !f.level || f.level === 0;
+      });
+
+      // 자식 1위 점수가 60점↑이면 자식 포함 Top3
+      const bestChild = childRecs.sort((a,b) => b.score - a.score)[0];
+      let allRecs;
+      if (bestChild && bestChild.score >= 60) {
+        // 자식 1위 + 부모 후보들을 합쳐서 정렬
+        allRecs = [...nonOther, otherRec]
+          .sort((a, b) => b.score - a.score || folderIndex(a.folder) - folderIndex(b.folder));
+      } else {
+        // 자식 점수가 낮으면 부모 위주로 노출 (자식은 낮은 순위)
+        const sortedParents = [...parentRecs, otherRec]
+          .sort((a, b) => b.score - a.score || folderIndex(a.folder) - folderIndex(b.folder));
+        const sortedChildren = childRecs.sort((a,b) => b.score - a.score);
+        allRecs = [...sortedParents, ...sortedChildren];
+      }
+
+      return allRecs
+        .filter((r, i, arr) => arr.findIndex(x => x.folderId === r.folderId) === i)
         .slice(0, 3);
     }
 
@@ -6226,7 +7187,7 @@
         return false;
       }
       try {
-        const response = await fetchApi(apiPathWithTeamSpace("/api/folder-rules"), { method: "GET" }, 6000);
+        const response = await fetchApi(apiPathWithTeam("/api/folder-rules"), { method: "GET" }, 6000);
         const data = await response.json();
         const backendRules = Array.isArray(data.folder_rules) ? data.folder_rules : [];
         if (!data.ok || !backendRules.length) throw new Error("Invalid folder rules response");
@@ -6240,40 +7201,13 @@
       }
     }
 
-    async function loadSpacesFromBackend() {
-      if (!currentApiBaseUrl) {
-        await checkBackendHealth();
-      }
-      if (!currentApiBaseUrl) {
-        state.spaces = [];
-        return false;
-      }
-      try {
-        const teamId = normalizeTeamId(state.teamId);
-        const response = await fetchApi(`/api/teams/${encodeURIComponent(teamId)}/spaces`, { method: "GET" }, 6000);
-        const data = await response.json();
-        const spaces = Array.isArray(data.spaces) ? data.spaces : [];
-        if (!data.ok) throw new Error("Invalid spaces response");
-        state.spaces = spaces;
-        if (spaces.length > 0 && !state.spaceId) {
-          state.spaceId = spaces[0].id;
-          state.spaceName = spaces[0].name;
-        }
-        saveState();
-        return true;
-      } catch (error) {
-        state.spaces = [];
-        return false;
-      }
-    }
-
     async function saveFolderRulesToBackend() {
       if (!currentApiBaseUrl) {
         await checkBackendHealth();
       }
       if (!currentApiBaseUrl) return false;
       try {
-        const response = await fetchApi(apiPathWithTeamSpace("/api/folder-rules"), {
+        const response = await fetchApi(apiPathWithTeam("/api/folder-rules"), {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -6308,7 +7242,7 @@
       }
       if (!currentApiBaseUrl) return false;
       try {
-        const response = await fetchApi(apiPathWithTeamSpace("/api/folder-rules/reset"), { method: "POST" }, 8000);
+        const response = await fetchApi(apiPathWithTeam("/api/folder-rules/reset"), { method: "POST" }, 8000);
         const data = await response.json();
         if (!data.ok || !Array.isArray(data.folder_rules)) throw new Error("Invalid folder rules reset response");
         state.folderRules = normalizeFolderRules(data.folder_rules);
@@ -6443,7 +7377,7 @@
     }
 
     function filteredDocs() {
-      return applyDocFilters(getCurrentSpaceDocs(), getDocFilters());
+      return applyDocFilters(getCurrentTeamDocs(), getDocFilters());
     }
 
     function hasActiveDocFilters() {
@@ -7728,7 +8662,7 @@
         return;
       }
       const interpreted = interpretSearchQuery(query);
-      const scored = getCurrentSpaceDocs().map((doc) => {
+      const scored = getCurrentTeamDocs().map((doc) => {
         const structuredLocations = getStructuredSearchLocations(doc, interpreted);
         if (!matchesInterpretedSearch(doc, interpreted, structuredLocations)) return null;
         const textLocations = interpreted.textQuery ? getDocMatchLocations(doc, interpreted.textQuery) : [];
@@ -8345,7 +9279,7 @@
 
     function renderArchive() {
       const list = qs("#archiveList");
-      const rows = getCurrentSpaceDocs()
+      const rows = getCurrentTeamDocs()
         .filter((doc) => !doc.archived)
         .map((doc) => ({
           ...doc,
@@ -8382,7 +9316,7 @@
     }
 
     function archiveAllSuggested() {
-      const candidates = getCurrentSpaceDocs().filter((doc) => !doc.archived && doc.lastViewedDays >= 90);
+      const candidates = getCurrentTeamDocs().filter((doc) => !doc.archived && doc.lastViewedDays >= 90);
       if (!candidates.length) {
         showToast("처리할 아카이브 제안 항목이 없습니다.", "info");
         return;
@@ -8654,12 +9588,37 @@
     }
 
     function getFolderRules() {
-      if (!Array.isArray(state.folderRules) || state.folderRules.length !== FOLDERS.length) {
+      const rootCount = FOLDERS.filter(f => !f.parentId).length;
+      if (!Array.isArray(state.folderRules) || state.folderRules.length < rootCount) {
         state.folderRules = folderRulesForTeam(getCurrentTeamId());
       } else {
         state.folderRules = normalizeFolderRules(state.folderRules);
       }
+      // 기본 하위 폴더 중 없는 것 자동 추가
+      const existingIds = new Set(state.folderRules.map(f => f.id));
+      FOLDERS.filter(f => f.parentId && !existingIds.has(f.id)).forEach(f => {
+        state.folderRules.push({ ...f });
+      });
       return state.folderRules;
+    }
+
+    // 최상위 폴더만 반환 (level:0 또는 parentId 없음)
+    function getRootFolders() {
+      return getFolderRules().filter(f => !f.parentId && f.id !== "other");
+    }
+
+    // 특정 부모의 자식 폴더 반환
+    function getChildFolders(parentId) {
+      return getFolderRules().filter(f => f.parentId === parentId);
+    }
+
+    // 폴더 전체 경로 반환 (예: "계약/정산 > MOU/협약서")
+    function getFolderPath(folderId) {
+      const folder = getFolderRuleById(folderId);
+      if (!folder) return "";
+      if (!folder.parentId) return folder.name;
+      const parent = getFolderRuleById(folder.parentId);
+      return parent ? `${parent.name} > ${folder.name}` : folder.name;
     }
 
     function getFolderRuleById(id) {
@@ -8706,14 +9665,8 @@
       return badges[resolvedId] || "";
     }
 
-    function getCurrentSpaceDocs() {
-      const teamDocs = getCurrentTeamDocs();
-      if (!state.spaceId) return teamDocs;
-      return teamDocs.filter(doc => doc.spaceId === state.spaceId);
-    }
-
     function getFolderCounts() {
-      return getCurrentSpaceDocs().reduce((acc, doc) => {
+      return getCurrentTeamDocs().reduce((acc, doc) => {
         acc[doc.category] = (acc[doc.category] || 0) + 1;
         return acc;
       }, {});
@@ -8725,7 +9678,6 @@
         const categoryId = doc.categoryId || getFolderIdByName(doc.category || "") || "other";
         const rule = getFolderRuleById(categoryId);
         const teamId = normalizeTeamId(doc.teamId || doc.team_id || DEFAULT_TEAM_ID);
-        const spaceId = doc.spaceId || doc.space_id || "";
         const recs = normalizeRecommendationList(Array.isArray(doc.recs) ? doc.recs : Array.isArray(doc.recommendations) ? doc.recommendations : []);
         const categoryName = getFolderDisplayName(categoryId) || rule.name;
         return {
@@ -8734,8 +9686,6 @@
           teamName: getTeamName(teamId),
           team_id: teamId,
           team_name: getTeamName(teamId),
-          spaceId,
-          space_id: spaceId,
           categoryId,
           category: categoryName,
           matched: Array.isArray(doc.matched) ? doc.matched : [],
@@ -8900,9 +9850,26 @@
       const normalizedTeamId = normalizeTeamId(teamId);
       state.folderRulesByTeam = state.folderRulesByTeam || {};
       const cachedRules = state.folderRulesByTeam[normalizedTeamId];
+
+      // 커스텀 규칙이 있으면 커스텀 사용, 없으면 기본 16개
       if (Array.isArray(cachedRules) && cachedRules.length) {
+        const isCustom = state._hasCustomRules && state._hasCustomRules[normalizedTeamId];
+        if (isCustom) return cachedRules; // 커스텀: 정규화 없이 그대로
         return normalizeFolderRules(cachedRules);
       }
+
+      // Firestore에서 커스텀 규칙 비동기 로드 후 반영
+      loadCustomFolderRules(normalizedTeamId).then(rules => {
+        if (rules && rules.length) {
+          state.folderRulesByTeam[normalizedTeamId] = rules;
+          state._hasCustomRules = state._hasCustomRules || {};
+          state._hasCustomRules[normalizedTeamId] = true;
+          state.folderRules = rules;
+          renderFolderNav();
+          renderFolderFilter();
+        }
+      }).catch(() => {});
+
       return cloneFolderRules();
     }
 
@@ -8964,9 +9931,6 @@
           teamName: getTeamName(teamId),
           team_id: teamId,
           team_name: getTeamName(teamId),
-          spaceId: saved.spaceId || "",
-          spaceName: saved.spaceName || "",
-          spaces: Array.isArray(saved.spaces) ? saved.spaces : [],
           dict: { ...DEFAULT_DICT, ...((savedDict && typeof savedDict === "object") ? savedDict : {}) },
           learnedExamples: [],
           folderRules: [],
@@ -8992,9 +9956,6 @@
           teamName: getTeamName(DEFAULT_TEAM_ID),
           team_id: DEFAULT_TEAM_ID,
           team_name: getTeamName(DEFAULT_TEAM_ID),
-          spaceId: "",
-          spaceName: "",
-          spaces: [],
           dict: { ...DEFAULT_DICT },
           learnedExamples: [],
           folderRules: cloneFolderRules(),
@@ -9087,6 +10048,290 @@
     function cssAttr(value) {
       return String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
     }
+  </script>
+
+  <!-- ── 분류 미리보기 슬라이드 패널 ── -->
+  <div id="classifyPreviewPanel" style="
+    position:fixed; top:0; right:0; height:100vh; width:420px; max-width:90vw;
+    background:var(--surface); border-left:1px solid var(--border);
+    box-shadow:-4px 0 24px rgba(0,0,0,.25); z-index:400;
+    display:flex; flex-direction:column;
+    transform:translateX(100%); transition:transform 220ms cubic-bezier(.4,0,.2,1);
+  ">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <div style="min-width:0">
+        <div id="cpvTitle" style="font-size:13px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+        <div id="cpvSubtitle" class="muted" style="font-size:11px;margin-top:1px;"></div>
+      </div>
+      <button id="cpvCloseBtn" class="btn icon-btn" type="button" title="닫기" style="flex-shrink:0;"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="cpvBody" style="flex:1;min-height:0;overflow:auto;"></div>
+  </div>
+  <div id="classifyPreviewOverlay" style="
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:399;
+  "></div>
+
+  <script>
+  (function(){
+    const panel   = document.getElementById("classifyPreviewPanel");
+    const overlay = document.getElementById("classifyPreviewOverlay");
+    const cpvBody = document.getElementById("cpvBody");
+    const cpvTitle= document.getElementById("cpvTitle");
+    const cpvSub  = document.getElementById("cpvSubtitle");
+    document.getElementById("cpvCloseBtn").addEventListener("click", closePreviewPanel);
+    overlay.addEventListener("click", closePreviewPanel);
+
+    function closePreviewPanel() {
+      panel.style.transform = "translateX(100%)";
+      overlay.style.display = "none";
+      panel._currentId = null;
+    }
+
+    function openClassifyPreview(processId) {
+      const item = window.processStore && window.processStore.get(processId);
+      if (!item) return;
+      // 같은 파일 클릭 시 닫기 토글
+      if (panel._currentId === processId && panel.style.transform !== "translateX(100%)") {
+        closePreviewPanel(); return;
+      }
+      panel._currentId = processId;
+      cpvTitle.textContent = item.fileName;
+      cpvSub.textContent   = "";
+      cpvBody.innerHTML    = `<div style="padding:24px;text-align:center;color:var(--text-3)"><div class="pc-spinner" style="margin:0 auto 12px"></div>로딩 중...</div>`;
+      panel.style.transform = "translateX(0)";
+      overlay.style.display = "block";
+      renderPreview(item);
+    }
+
+    async function renderPreview(item) {
+      const file = item.fileObject;
+      const ft   = item.fileType;
+      if (!file) { cpvBody.innerHTML = previewTextBlock("파일 객체를 찾을 수 없습니다."); return; }
+
+      try {
+        // PDF
+        if (ft === "pdf" && typeof pdfjsLib !== "undefined") {
+          const ab  = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+          cpvSub.textContent = `PDF · ${pdf.numPages}페이지`;
+          const wrap = document.createElement("div");
+          wrap.style.cssText = "padding:12px;display:flex;flex-direction:column;gap:10px;";
+          const limit = Math.min(pdf.numPages, 8);
+          for (let i = 1; i <= limit; i++) {
+            const page    = await pdf.getPage(i);
+            const vp      = page.getViewport({ scale: 1.2 });
+            const canvas  = document.createElement("canvas");
+            canvas.width  = vp.width;
+            canvas.height = vp.height;
+            canvas.style.cssText = "width:100%;border-radius:6px;border:1px solid var(--border);display:block;";
+            await page.render({ canvasContext: canvas.getContext("2d"), viewport: vp }).promise;
+            wrap.appendChild(canvas);
+          }
+          if (pdf.numPages > limit) {
+            const more = document.createElement("div");
+            more.style.cssText = "text-align:center;font-size:12px;color:var(--text-3);padding:8px 0;";
+            more.textContent = `+ ${pdf.numPages - limit}페이지 더 있음`;
+            wrap.appendChild(more);
+          }
+          cpvBody.innerHTML = ""; cpvBody.appendChild(wrap);
+          return;
+        }
+
+        // 이미지
+        if (ft === "image") {
+          const url = URL.createObjectURL(file);
+          cpvSub.textContent = "이미지";
+          cpvBody.innerHTML = `<div style="padding:12px"><img src="${url}" style="width:100%;border-radius:8px;border:1px solid var(--border)" onload="URL.revokeObjectURL(this.src)"></div>`;
+          return;
+        }
+
+        // DOCX / PPTX → Firebase Storage 업로드 후 Google Docs Viewer (원본 렌더링)
+        if (ft === "docx" || ft === "pptx") {
+          const ftLabel = ft.toUpperCase();
+          cpvSub.textContent = `${ftLabel} · 원본 로딩 중...`;
+          cpvBody.innerHTML = loadingBlock("원본 문서를 불러오는 중...");
+          try {
+            if (window._fbStorage && window._fbFunctions) {
+              const { ref, uploadBytes, getDownloadURL } = window._fbFunctions;
+              const uid  = (window._fbAuth && window._fbAuth.currentUser)
+                            ? window._fbAuth.currentUser.uid : "anon";
+              const sref = ref(window._fbStorage, `preview-tmp/${uid}/${Date.now()}_${file.name}`);
+              await uploadBytes(sref, file);
+              const dlUrl     = await getDownloadURL(sref);
+              const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(dlUrl)}&embedded=true`;
+              cpvSub.textContent = `${ftLabel} · 원본 보기`;
+              cpvBody.innerHTML  = `<iframe src="${viewerUrl}" style="width:100%;height:calc(100vh - 90px);border:none;display:block;" title="${file.name}"></iframe>`;
+            } else throw new Error("Firebase 미연결");
+          } catch(e) {
+            // 폴백: DOCX는 mammoth.js, PPTX는 텍스트
+            cpvSub.textContent = `${ftLabel} · 텍스트 변환`;
+            if (ft === "docx" && typeof mammoth !== "undefined") {
+              const ab  = await file.arrayBuffer();
+              const res = await mammoth.convertToHtml({ arrayBuffer: ab });
+              cpvBody.innerHTML = `<div style="padding:20px 24px;font-size:13px;line-height:1.8;color:var(--text);font-family:Georgia,serif;max-width:640px;margin:0 auto">${res.value || "<em>내용 없음</em>"}</div>`;
+            } else {
+              const text = item.evidence && item.evidence.text ? item.evidence.text : "텍스트를 추출할 수 없습니다.";
+              cpvBody.innerHTML = previewTextBlock(text);
+            }
+          }
+          return;
+        }
+
+        // XLSX → SheetJS 스프레드시트 테이블 렌더링
+        if (ft === "xlsx" && typeof XLSX !== "undefined") {
+          const ab = await file.arrayBuffer();
+          const wb = XLSX.read(ab, { type: "array" });
+          cpvSub.textContent = `XLSX · ${wb.SheetNames.length}시트`;
+
+          // 시트 탭 + 테이블 구성
+          let tabsHtml = "";
+          let tablesHtml = "";
+          wb.SheetNames.slice(0, 5).forEach((name, si) => {
+            const active = si === 0;
+            tabsHtml += `<button onclick="(function(n){document.querySelectorAll('.cpv-sheet').forEach(s=>s.style.display='none');document.getElementById('cpvSheet_'+n).style.display='block';document.querySelectorAll('.cpv-tab').forEach(t=>t.style.background='var(--surface-2)');this.style.background='var(--accent)';this.style.color='#fff';})(${si},event)" class="cpv-tab" style="padding:5px 14px;font-size:11px;font-weight:700;border:1px solid var(--border);border-bottom:none;background:${active?"var(--accent)":"var(--surface-2)"};color:${active?"#fff":"var(--text-2)"};cursor:pointer;border-radius:4px 4px 0 0;margin-right:3px">${name}</button>`;
+            const ws   = wb.Sheets[name];
+            const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+            let tableHtml = `<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:12px;min-width:100%;white-space:nowrap">`;
+            rows.slice(0, 100).forEach((row, ri) => {
+              const isHeader = ri === 0;
+              tableHtml += `<tr style="${ri%2===1?"background:var(--surface-2)":""}">`;
+              // 행 번호
+              tableHtml += `<td style="border:1px solid var(--border);padding:3px 8px;color:var(--text-3);font-size:10px;text-align:center;background:var(--surface-2);min-width:32px;font-weight:600">${ri+1}</td>`;
+              row.forEach(cell => {
+                const v = String(cell).slice(0, 100);
+                tableHtml += `<td style="border:1px solid var(--border);padding:4px 10px;${isHeader?"font-weight:800;background:var(--surface-3);":""}text-align:${typeof cell==="number"?"right":"left"}">${v}</td>`;
+              });
+              tableHtml += "</tr>";
+            });
+            tableHtml += `</table></div>`;
+            if (rows.length > 100) tableHtml += `<div style="padding:8px 12px;font-size:11px;color:var(--text-3)">+ ${rows.length-100}행 더 있음</div>`;
+            tablesHtml += `<div id="cpvSheet_${si}" class="cpv-sheet" style="display:${active?"block":"none"}">${tableHtml}</div>`;
+          });
+
+          cpvBody.innerHTML = `
+            <div style="padding:10px 12px 0;border-bottom:1px solid var(--border)">${tabsHtml}</div>
+            <div style="padding:8px 0">${tablesHtml}</div>`;
+          return;
+        }
+
+        // CSV → 테이블 렌더링
+        if (ft === "csv") {
+          cpvSub.textContent = "CSV";
+          try {
+            const text = await file.text();
+            const lines = text.trim().split(/\r?\n/).slice(0, 101);
+            const parseRow = line => {
+              const cells = []; let cur = "", inQ = false;
+              for (let i=0; i<line.length; i++) {
+                const c = line[i];
+                if (c==='"') { inQ=!inQ; }
+                else if (c==="," && !inQ) { cells.push(cur); cur=""; }
+                else cur+=c;
+              }
+              cells.push(cur);
+              return cells;
+            };
+            const rows = lines.map(parseRow);
+            let tableHtml = `<div style="overflow-x:auto;padding:8px 12px"><table style="border-collapse:collapse;font-size:12px;min-width:100%;white-space:nowrap">`;
+            rows.forEach((row, ri) => {
+              const isHeader = ri === 0;
+              tableHtml += `<tr style="${ri%2===1?"background:var(--surface-2)":""}">`;
+              tableHtml += `<td style="border:1px solid var(--border);padding:3px 6px;color:var(--text-3);font-size:10px;text-align:center;background:var(--surface-2);min-width:28px">${ri+1}</td>`;
+              row.forEach(cell => {
+                const v = String(cell).trim().slice(0,100);
+                tableHtml += `<td style="border:1px solid var(--border);padding:4px 10px;${isHeader?"font-weight:800;background:var(--surface-3);":""}">${v}</td>`;
+              });
+              tableHtml += "</tr>";
+            });
+            tableHtml += "</table></div>";
+            if (lines.length > 100) tableHtml += `<div style="padding:4px 12px 8px;font-size:11px;color:var(--text-3)">+ 더 많은 행이 있습니다 (최대 100행 표시)</div>`;
+            cpvBody.innerHTML = tableHtml;
+          } catch(e) { cpvBody.innerHTML = previewTextBlock("CSV 파싱 오류: " + e.message); }
+          return;
+        }
+
+        // TXT
+        if (ft === "txt") {
+          const text = await file.text();
+          cpvSub.textContent = "TXT";
+          cpvBody.innerHTML = `<pre style="padding:16px;font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-all;color:var(--text-2);margin:0;font-family:Consolas,monospace">${text.slice(0, 8000)}</pre>`;
+          return;
+        }
+
+        // HWPX → PrvImage.png 이미지 미리보기 (없으면 텍스트)
+        if (ft === "hwpx" && typeof JSZip !== "undefined") {
+          cpvSub.textContent = "HWPX";
+          const ab  = await file.arrayBuffer();
+          const zip = await JSZip.loadAsync(ab);
+          const names = Object.keys(zip.files).map(n => n.toLowerCase());
+
+          // 1순위: Preview/PrvImage.png (이미지 미리보기)
+          const imgKey = Object.keys(zip.files).find(n =>
+            n.toLowerCase().includes("preview") &&
+            (n.toLowerCase().endsWith(".png") || n.toLowerCase().endsWith(".jpg") || n.toLowerCase().endsWith(".bmp"))
+          );
+          if (imgKey) {
+            const imgData = await zip.files[imgKey].async("base64");
+            const ext = imgKey.split(".").pop().toLowerCase();
+            const mime = ext === "jpg" ? "image/jpeg" : ext === "bmp" ? "image/bmp" : "image/png";
+            cpvSub.textContent = "HWPX · 미리보기 이미지";
+            cpvBody.innerHTML = `<div style="padding:12px"><img src="data:${mime};base64,${imgData}" style="width:100%;border-radius:6px;border:1px solid var(--border);display:block" alt="HWPX 미리보기"></div>`;
+            return;
+          }
+
+          // 2순위: PrvText.txt 텍스트 미리보기
+          const txtKey = Object.keys(zip.files).find(n =>
+            n.toLowerCase().includes("preview") && n.toLowerCase().endsWith(".txt")
+          );
+          if (txtKey) {
+            const text = await zip.files[txtKey].async("string");
+            cpvBody.innerHTML = previewTextBlock(text);
+            return;
+          }
+
+          // 3순위: section XML에서 텍스트 추출
+          let xmlText = "";
+          for (const name of Object.keys(zip.files)) {
+            if (name.toLowerCase().startsWith("contents/") && name.toLowerCase().endsWith(".xml")) {
+              const xml = await zip.files[name].async("string");
+              xmlText += xml.replace(/<[^>]+>/g, " ") + "\n";
+              if (xmlText.length > 3000) break;
+            }
+          }
+          cpvBody.innerHTML = previewTextBlock(xmlText.trim() || "HWPX 미리보기를 불러올 수 없습니다.");
+          return;
+        }
+
+        // HWP (바이너리)
+        if (ft === "hwp") {
+          cpvSub.textContent = "HWP";
+          cpvBody.innerHTML = `<div style="padding:32px;text-align:center;color:var(--text-3)">
+            <i class="ti ti-file-off" style="font-size:40px;display:block;margin-bottom:12px"></i>
+            <div style="font-size:13px;font-weight:700;color:var(--text-2);margin-bottom:8px">HWP 바이너리 미리보기 불가</div>
+            <div style="font-size:12px;line-height:1.6">HWP 바이너리 형식은 브라우저에서 렌더링을 지원하지 않습니다.<br>한컴오피스 또는 한글 뷰어로 직접 열어주세요.</div>
+          </div>`;
+          return;
+        }
+
+        cpvBody.innerHTML = previewTextBlock("이 형식은 미리보기를 지원하지 않습니다.");
+      } catch(e) {
+        cpvBody.innerHTML = previewTextBlock("미리보기 오류: " + e.message);
+      }
+    }
+
+    function previewTextBlock(text) {
+      return `<pre style="padding:16px;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-all;color:var(--text-2);margin:0">${text.slice(0,5000)}</pre>`;
+    }
+    function loadingBlock(msg) {
+      return `<div style="padding:32px;text-align:center;color:var(--text-3)">
+        <div class="pc-spinner" style="margin:0 auto 12px;width:20px;height:20px;border-width:3px"></div>
+        <div style="font-size:12px">${msg}</div>
+      </div>`;
+    }
+
+    window.openClassifyPreview = openClassifyPreview;
+    window.closePreviewPanel   = closePreviewPanel;
+  })();
   </script>
 </body>
 </html>
