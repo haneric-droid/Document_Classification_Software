@@ -2433,6 +2433,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <!-- JSZip -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Tesseract.js (OCR: 이미지/스캔 PDF, 한국어+영어) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -5475,6 +5477,52 @@
       `;
     }
 
+    // ── OCR (Tesseract.js, 브라우저, 한국어+영어) ──────────────────────
+    window._ocrWorker = null;
+    window._ocrProgress = 0;
+
+    async function ensureOcrWorker() {
+      if (window._ocrWorker) return window._ocrWorker;
+      if (typeof Tesseract === "undefined") throw new Error("Tesseract.js 미로드");
+      // kor+eng 워커 생성 (언어 데이터는 최초 1회 다운로드 후 브라우저 캐시)
+      const worker = await Tesseract.createWorker(["kor", "eng"], 1, {
+        logger: (m) => {
+          if (m && m.status === "recognizing text") {
+            window._ocrProgress = Math.round((m.progress || 0) * 100);
+          }
+        }
+      });
+      window._ocrWorker = worker;
+      return worker;
+    }
+
+    // 이미지 파일 OCR → 텍스트
+    async function runOcrOnImage(file) {
+      const worker = await ensureOcrWorker();
+      const { data } = await worker.recognize(file);
+      return (data && data.text ? data.text : "").replace(/\s+/g, " ").trim();
+    }
+
+    // 스캔 PDF: 페이지를 이미지로 렌더링 후 OCR (앞 maxPages 페이지만)
+    async function runOcrOnPdf(pdf, pageCount, maxPages = 3) {
+      const worker = await ensureOcrWorker();
+      let text = "";
+      const limit = Math.min(pageCount, maxPages);
+      for (let i = 1; i <= limit; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext("2d");
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        const { data } = await worker.recognize(canvas);
+        if (data && data.text) text += data.text + "\n";
+        canvas.width = 0; canvas.height = 0; // 메모리 해제
+      }
+      return text.replace(/\s+/g, " ").trim();
+    }
+
     async function analyzeFileEvidence(file, fileName, fileType) {
       // PDF.js worker 설정
       if (typeof pdfjsLib !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
@@ -5497,7 +5545,17 @@
           }
           allText = allText.trim();
           if (allText.length < 50) {
-            return { ...fallback, extractionStatus: "no_text_layer", backendStatusText: "텍스트 레이어 없음 (스캔본)", backendOk: false, backendWarning: "OCR 처리가 필요합니다.", pageCount };
+            // 텍스트 레이어 없음(스캔본) → OCR 시도
+            try {
+              showToast("스캔 PDF에서 OCR로 텍스트 추출 중... (다소 걸릴 수 있어요)", "info");
+              const ocrText = await runOcrOnPdf(pdf, pageCount);
+              if (ocrText && ocrText.length >= 30) {
+                return { mode: "Tesseract.js OCR (스캔 PDF)", text: ocrText.slice(0, 4000), pageCount, extractionStatus: "success", backendStatusText: "OCR 추출 완료 (스캔 PDF)", backendOk: true, backendWarning: "", ocr: true };
+              }
+            } catch (ocrErr) {
+              console.warn("PDF OCR 실패:", ocrErr);
+            }
+            return { ...fallback, extractionStatus: "no_text_layer", backendStatusText: "텍스트 레이어 없음 (스캔본) - OCR 실패", backendOk: false, backendWarning: "OCR로도 텍스트를 추출하지 못했습니다.", pageCount };
           }
           return { mode: "PDF.js 브라우저 텍스트 추출", text: allText.slice(0, 4000), pageCount, extractionStatus: "success", backendStatusText: "PDF.js 브라우저 추출 완료", backendOk: true, backendWarning: "" };
         }
@@ -5556,9 +5614,18 @@
           return { mode: "JSZip HWPX 브라우저 추출", text: text.slice(0, 4000), pageCount: 0, extractionStatus: "success", backendStatusText: "HWPX 브라우저 추출 완료", backendOk: true, backendWarning: "" };
         }
 
-        // 이미지
+        // 이미지 → OCR 시도
         if (fileType === "image") {
-          return { ...fallback, extractionStatus: "ocr_required", backendStatusText: "이미지 문서는 OCR 처리가 필요합니다.", backendOk: false, backendWarning: "이미지 문서는 OCR 처리가 필요합니다." };
+          try {
+            showToast("이미지에서 OCR로 텍스트 추출 중... (다소 걸릴 수 있어요)", "info");
+            const ocrText = await runOcrOnImage(file);
+            if (ocrText && ocrText.length >= 10) {
+              return { mode: "Tesseract.js OCR (이미지)", text: ocrText.slice(0, 4000), pageCount: 1, extractionStatus: "success", backendStatusText: "OCR 추출 완료 (이미지)", backendOk: true, backendWarning: "", ocr: true };
+            }
+          } catch (ocrErr) {
+            console.warn("이미지 OCR 실패:", ocrErr);
+          }
+          return { ...fallback, extractionStatus: "ocr_required", backendStatusText: "이미지에서 텍스트를 찾지 못했습니다.", backendOk: false, backendWarning: "OCR로 추출 가능한 텍스트가 없습니다." };
         }
 
         // 나머지 fallback
@@ -7458,7 +7525,10 @@
           : `<span class="badge">로컬 저장</span>`
       ];
       if (doc.extractionStatus === "success") {
-        badges.push(`<span class="badge success">실제 텍스트 추출</span>`);
+        const viaOcr = /OCR/i.test(String(doc.extraction || doc.extractionMode || ""));
+        badges.push(viaOcr
+          ? `<span class="badge success">OCR 텍스트 추출</span>`
+          : `<span class="badge success">실제 텍스트 추출</span>`);
       }
       if (doc.extractionStatus === "no_text_layer" || doc.extractionStatus === "ocr_required") {
         badges.push(`<span class="badge warn">OCR 필요</span>`);

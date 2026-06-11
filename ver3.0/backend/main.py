@@ -1210,6 +1210,10 @@ async def create_document(
 
     if not evidence_package and client_evidence_package:
         evidence_package = truncate_text(client_evidence_package, MAX_EVIDENCE_CHARS)
+        # 클라이언트(브라우저 OCR 등)에서 텍스트를 확보한 경우, 추출 실패 상태를 성공으로 갱신
+        if extraction_status in {"ocr_required", "no_text_layer", "unsupported", "failed"}:
+            extraction_status = "success"
+            warning = ""
 
     duplicate_candidates = find_duplicate_candidates(
         db=db,
