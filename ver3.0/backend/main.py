@@ -391,10 +391,10 @@ def normalize_team_id(team_id: str | None = None) -> str:
     return (team_id or DEFAULT_TEAM_ID).strip() or DEFAULT_TEAM_ID
 
 
-def folder_rule_db_id(team_id: str, folder_id: str) -> str:
-    normalized_team_id = normalize_team_id(team_id)
+def folder_rule_db_id(space_id: str, folder_id: str) -> str:
     normalized_folder_id = str(folder_id or "other").strip() or "other"
-    return normalized_folder_id if normalized_team_id == DEFAULT_TEAM_ID else f"{normalized_team_id}:{normalized_folder_id}"
+    sid = (space_id or "").strip()
+    return f"{sid}:{normalized_folder_id}" if sid else normalized_folder_id
 
 
 def init_db() -> None:
@@ -406,7 +406,8 @@ def init_db() -> None:
     try:
         backfill_document_hashes(db)
         for team_id in TEAM_IDS:
-            seed_folder_rules(db, team_id)
+            # 각 기본 팀에 기본 스페이스 확보(+폴더 규칙 시딩, 기존 문서 이관)
+            ensure_team_default_space(db, team_id)
         db.commit()
     finally:
         db.close()
@@ -506,23 +507,20 @@ def ensure_review_queue_schema() -> None:
         conn.execute(text("UPDATE review_queue SET updated_at = COALESCE(updated_at, created_at) WHERE updated_at IS NULL"))
 
 
-def seed_folder_rules(db: Session, team_id: str, reset: bool = False) -> None:
+def seed_folder_rules(db: Session, space_id: str, team_id: str, reset: bool = False) -> None:
+    """스페이스 단위로 기본 분류 폴더 규칙을 시딩한다."""
     normalized_team_id = normalize_team_id(team_id)
     if reset:
-        db.query(FolderRule).filter(FolderRule.team_id == normalized_team_id).delete(synchronize_session=False)
+        db.query(FolderRule).filter(FolderRule.space_id == space_id).delete(synchronize_session=False)
         db.flush()
     for order, rule in enumerate(DEFAULT_FOLDER_RULES):
         folder_id = rule["id"]
         existing = (
             db.query(FolderRule)
-            .filter(FolderRule.team_id == normalized_team_id, FolderRule.folder_id == folder_id)
+            .filter(FolderRule.space_id == space_id, FolderRule.folder_id == folder_id)
             .first()
         )
-        if not existing and normalized_team_id == DEFAULT_TEAM_ID:
-            legacy = db.get(FolderRule, folder_id)
-            if legacy:
-                existing = legacy
-        payload = default_folder_rule_payload(rule, normalized_team_id)
+        payload = default_folder_rule_payload(rule, space_id, normalized_team_id)
         if existing:
             if reset:
                 apply_folder_rule_payload(existing, payload)
@@ -530,11 +528,12 @@ def seed_folder_rules(db: Session, team_id: str, reset: bool = False) -> None:
         db.add(FolderRule(**payload))
 
 
-def default_folder_rule_payload(rule: dict, team_id: str) -> dict:
+def default_folder_rule_payload(rule: dict, space_id: str, team_id: str) -> dict:
     folder_id = rule["id"]
     return {
-        "id": folder_rule_db_id(team_id, folder_id),
+        "id": folder_rule_db_id(space_id, folder_id),
         "team_id": normalize_team_id(team_id),
+        "space_id": space_id,
         "folder_id": folder_id,
         "name": rule.get("name", folder_id),
         "icon": FOLDER_ICON_MAP.get(folder_id, ""),
@@ -546,17 +545,55 @@ def default_folder_rule_payload(rule: dict, team_id: str) -> dict:
     }
 
 
-def create_default_space(db: Session, team_id: str) -> Space:
-    """팀에 기본 스페이스 생성"""
+def create_default_space(db: Session, team_id: str, name: str = "기본 스페이스") -> Space:
+    """팀에 스페이스를 생성하고 기본 분류 폴더 규칙을 시딩한다."""
+    normalized_team_id = normalize_team_id(team_id)
     space_id = f"space-{uuid.uuid4().hex[:12]}"
-    space = Space(id=space_id, team_id=team_id, name="기본 스페이스", description="")
+    space = Space(id=space_id, team_id=normalized_team_id, name=name, description="")
     db.add(space)
     db.flush()
+    seed_folder_rules(db, space_id, normalized_team_id)
     return space
+
+
+def ensure_team_default_space(db: Session, team_id: str) -> Space:
+    """팀의 첫 스페이스를 반환. 없으면 기본 스페이스를 만들고 기존 팀 문서를 이관한다."""
+    normalized_team_id = normalize_team_id(team_id)
+    space = (
+        db.query(Space)
+        .filter(Space.team_id == normalized_team_id)
+        .order_by(Space.created_at)
+        .first()
+    )
+    if space:
+        return space
+    space = create_default_space(db, normalized_team_id)
+    # 기존 팀 문서/검토큐(스페이스 미지정)를 기본 스페이스로 이관
+    db.query(Document).filter(
+        Document.team_id == normalized_team_id, Document.space_id.is_(None)
+    ).update({"space_id": space.id}, synchronize_session=False)
+    db.query(ReviewQueue).filter(
+        ReviewQueue.team_id == normalized_team_id, ReviewQueue.space_id.is_(None)
+    ).update({"space_id": space.id}, synchronize_session=False)
+    db.commit()
+    return space
+
+
+def resolve_space_id(db: Session, team_id: str, space_id: str | None) -> str:
+    """team_id + 선택적 space_id를 받아 유효한 space_id로 해석한다 (없으면 기본 스페이스)."""
+    normalized_team_id = normalize_team_id(team_id)
+    sid = (space_id or "").strip()
+    if sid:
+        sp = db.query(Space).filter(Space.id == sid, Space.team_id == normalized_team_id).first()
+        if sp:
+            return sp.id
+    return ensure_team_default_space(db, normalized_team_id).id
 
 
 def apply_folder_rule_payload(rule: FolderRule, payload: dict) -> None:
     rule.team_id = payload["team_id"]
+    if payload.get("space_id"):
+        rule.space_id = payload["space_id"]
     rule.folder_id = payload["folder_id"]
     rule.name = payload["name"]
     rule.icon = payload.get("icon", "")
@@ -741,11 +778,8 @@ def create_team(payload: dict = Body(...), current_user: User = Depends(get_curr
     user_team = UserTeam(user_id=current_user.id, team_id=team_id, role="owner")
     db.add(user_team)
 
-    # 신규 팀에 기본 스페이스 생성
+    # 신규 팀에 기본 스페이스 생성 (스페이스 단위 기본 폴더 규칙도 함께 시딩됨)
     default_space = create_default_space(db, team_id)
-
-    # 신규 팀에 기본 폴더 분류 규칙 추가
-    seed_folder_rules(db, team_id)
 
     db.commit()
     db.refresh(team)
@@ -839,13 +873,15 @@ def get_team_spaces(team_id: str, current_user: User = Depends(get_current_user)
     """특정 팀의 스페이스 목록 조회 (스페이스가 없으면 기본 스페이스 자동 생성)"""
     normalized_team_id = normalize_team_id(team_id)
     check_team_access(normalized_team_id, current_user.id, db)
-    spaces = db.query(Space).filter(Space.team_id == normalized_team_id).all()
 
-    # 스페이스가 없으면 기본 스페이스 생성
-    if not spaces:
-        default_space = create_default_space(db, normalized_team_id)
-        db.commit()
-        spaces = [default_space]
+    # 스페이스가 없으면 기본 스페이스 확보(+폴더 규칙 시딩, 기존 문서 이관)
+    ensure_team_default_space(db, normalized_team_id)
+    spaces = (
+        db.query(Space)
+        .filter(Space.team_id == normalized_team_id)
+        .order_by(Space.created_at)
+        .all()
+    )
 
     spaces_list = [
         {
@@ -874,15 +910,19 @@ def create_space(payload: dict = Body(...), current_user: User = Depends(get_cur
         raise HTTPException(status_code=400, detail="스페이스 이름을 입력해주세요.")
 
     check_team_access(team_id, current_user.id, db)
+    normalized_team_id = normalize_team_id(team_id)
 
     space_id = f"space-{uuid.uuid4().hex[:12]}"
     space = Space(
         id=space_id,
-        team_id=normalize_team_id(team_id),
+        team_id=normalized_team_id,
         name=space_name,
         description=payload.get("description", "")
     )
     db.add(space)
+    db.flush()
+    # 새 스페이스에 기본 분류 폴더 규칙 시딩
+    seed_folder_rules(db, space_id, normalized_team_id)
     db.commit()
     db.refresh(space)
 
@@ -938,8 +978,8 @@ def migrate_demo_to_personal(
             {"team_id": personal_id}, synchronize_session=False
         )
 
-    # 개인 팀의 폴더 규칙이 없으면 기본값으로 seeding
-    seed_folder_rules(db, personal_id)
+    # 개인 팀의 기본 스페이스 확보(+기본 폴더 규칙 시딩, 기존 문서 이관)
+    ensure_team_default_space(db, personal_id)
     db.commit()
 
     return {
@@ -953,17 +993,20 @@ def migrate_demo_to_personal(
 @app.get("/api/folder-rules")
 def list_folder_rules(
     team_id: str = Query(DEFAULT_TEAM_ID),
+    space_id: str = Query(""),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     normalized_team_id = normalize_team_id(team_id)
     check_team_access(normalized_team_id, current_user.id, db)
-    seed_folder_rules(db, normalized_team_id)
+    resolved_space_id = resolve_space_id(db, normalized_team_id, space_id)
+    seed_folder_rules(db, resolved_space_id, normalized_team_id)
     db.commit()
-    rules = get_team_folder_rules(db, normalized_team_id)
+    rules = get_space_folder_rules(db, resolved_space_id)
     return {
         "ok": True,
         "team_id": normalized_team_id,
+        "space_id": resolved_space_id,
         "folder_rules": [serialize_folder_rule(rule) for rule in rules],
     }
 
@@ -972,24 +1015,26 @@ def list_folder_rules(
 def update_folder_rules(
     payload: Any = Body(...),
     team_id: str = Query(DEFAULT_TEAM_ID),
+    space_id: str = Query(""),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     normalized_team_id = normalize_team_id(team_id)
     check_team_access(normalized_team_id, current_user.id, db)
+    resolved_space_id = resolve_space_id(db, normalized_team_id, space_id)
     incoming_rules = payload.get("folder_rules", payload.get("rules", [])) if isinstance(payload, dict) else payload
     if not isinstance(incoming_rules, list):
         raise HTTPException(status_code=400, detail="folder_rules must be a list")
 
     existing_by_folder_id = {
         rule.folder_id or rule.id: rule
-        for rule in get_team_folder_rules(db, normalized_team_id)
+        for rule in get_space_folder_rules(db, resolved_space_id)
     }
     seen_folder_ids = set()
     for index, raw_rule in enumerate(incoming_rules):
         if not isinstance(raw_rule, dict):
             continue
-        payload_rule = normalize_folder_rule_payload(raw_rule, normalized_team_id, index)
+        payload_rule = normalize_folder_rule_payload(raw_rule, resolved_space_id, normalized_team_id, index)
         folder_id = payload_rule["folder_id"]
         seen_folder_ids.add(folder_id)
         existing = existing_by_folder_id.get(folder_id)
@@ -1000,7 +1045,7 @@ def update_folder_rules(
 
     for default_rule in DEFAULT_FOLDER_RULES:
         if default_rule["id"] not in seen_folder_ids:
-            payload_rule = default_folder_rule_payload(default_rule, normalized_team_id)
+            payload_rule = default_folder_rule_payload(default_rule, resolved_space_id, normalized_team_id)
             existing = existing_by_folder_id.get(default_rule["id"])
             if existing:
                 apply_folder_rule_payload(existing, payload_rule)
@@ -1008,10 +1053,11 @@ def update_folder_rules(
                 db.add(FolderRule(**payload_rule))
 
     db.commit()
-    rules = get_team_folder_rules(db, normalized_team_id)
+    rules = get_space_folder_rules(db, resolved_space_id)
     return {
         "ok": True,
         "team_id": normalized_team_id,
+        "space_id": resolved_space_id,
         "folder_rules": [serialize_folder_rule(rule) for rule in rules],
     }
 
@@ -1019,17 +1065,20 @@ def update_folder_rules(
 @app.post("/api/folder-rules/reset")
 def reset_folder_rules_api(
     team_id: str = Query(DEFAULT_TEAM_ID),
+    space_id: str = Query(""),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     normalized_team_id = normalize_team_id(team_id)
     check_team_access(normalized_team_id, current_user.id, db)
-    seed_folder_rules(db, normalized_team_id, reset=True)
+    resolved_space_id = resolve_space_id(db, normalized_team_id, space_id)
+    seed_folder_rules(db, resolved_space_id, normalized_team_id, reset=True)
     db.commit()
-    rules = get_team_folder_rules(db, normalized_team_id)
+    rules = get_space_folder_rules(db, resolved_space_id)
     return {
         "ok": True,
         "team_id": normalized_team_id,
+        "space_id": resolved_space_id,
         "folder_rules": [serialize_folder_rule(rule) for rule in rules],
     }
 
@@ -1124,11 +1173,13 @@ async def create_document(
     normalized_team_id = normalize_team_id(team_id)
     check_team_access(normalized_team_id, current_user.id, db)
 
-    # space_id 검증
+    # space_id 검증 (없거나 유효하지 않으면 팀의 기본 스페이스로 귀속)
     if space_id:
         space = db.query(Space).filter(Space.id == space_id, Space.team_id == normalized_team_id).first()
         if not space:
             raise HTTPException(status_code=400, detail="해당 팀에 존재하는 스페이스가 아닙니다.")
+    else:
+        space_id = ensure_team_default_space(db, normalized_team_id).id
     filename = file.filename or "uploaded_file"
     file_type = detect_file_type(filename, file.content_type or "")
     content = await file.read()
@@ -1714,12 +1765,23 @@ def get_team_folder_rules(db: Session, team_id: str) -> list[FolderRule]:
     return sorted(rules, key=lambda rule: order.get(rule.folder_id or rule.id, 999))
 
 
+def get_space_folder_rules(db: Session, space_id: str) -> list[FolderRule]:
+    rules = (
+        db.query(FolderRule)
+        .filter(FolderRule.space_id == space_id)
+        .all()
+    )
+    order = {rule["id"]: index for index, rule in enumerate(DEFAULT_FOLDER_RULES)}
+    return sorted(rules, key=lambda rule: order.get(rule.folder_id or rule.id, 999))
+
+
 def serialize_folder_rule(rule: FolderRule) -> dict:
     folder_id = rule.folder_id or rule.id
     return {
         "id": folder_id,
         "folder_id": folder_id,
         "team_id": rule.team_id or DEFAULT_TEAM_ID,
+        "space_id": rule.space_id or "",
         "name": rule.name,
         "icon": rule.icon or FOLDER_ICON_MAP.get(folder_id, ""),
         "description": rule.description or "",
@@ -1730,12 +1792,13 @@ def serialize_folder_rule(rule: FolderRule) -> dict:
     }
 
 
-def normalize_folder_rule_payload(raw_rule: dict, team_id: str, index: int = 0) -> dict:
+def normalize_folder_rule_payload(raw_rule: dict, space_id: str, team_id: str, index: int = 0) -> dict:
     base = DEFAULT_FOLDER_RULES[index] if index < len(DEFAULT_FOLDER_RULES) else DEFAULT_FOLDER_RULES[-1]
     folder_id = str(raw_rule.get("folder_id") or raw_rule.get("id") or base["id"]).strip() or base["id"]
     return {
-        "id": folder_rule_db_id(team_id, folder_id),
+        "id": folder_rule_db_id(space_id, folder_id),
         "team_id": normalize_team_id(team_id),
+        "space_id": space_id,
         "folder_id": folder_id,
         "name": str(raw_rule.get("name") or base.get("name") or folder_id).strip(),
         "icon": str(raw_rule.get("icon") or FOLDER_ICON_MAP.get(folder_id, "")).strip(),

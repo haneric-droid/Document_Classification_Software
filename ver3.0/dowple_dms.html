@@ -3666,6 +3666,15 @@
       return `${path}${separator}team_id=${encodeURIComponent(getCurrentTeamId())}`;
     }
 
+    // 팀 + 스페이스를 함께 붙인다 (스페이스 단위 리소스: 폴더 규칙 등)
+    function apiPathWithTeamSpace(path) {
+      let result = apiPathWithTeam(path);
+      if (state.spaceId) {
+        result += `&space_id=${encodeURIComponent(state.spaceId)}`;
+      }
+      return result;
+    }
+
     function renderTeamSelector() {
       const select = qs("#teamSelect");
       if (select) {
@@ -3740,8 +3749,8 @@
       showToast(`${state.teamName} 팀으로 전환했습니다.`, "info");
     }
 
-    // 스페이스 선택 (사이드바 목록 클릭)
-    function selectSpace(spaceId) {
+    // 스페이스 선택 (사이드바 목록 클릭) — 해당 스페이스의 분류 폴더를 다시 로드
+    async function selectSpace(spaceId) {
       if (!spaceId || spaceId === state.spaceId) return;
       state.spaceId = spaceId;
       const space = state.spaces.find(s => s.id === spaceId);
@@ -3751,6 +3760,8 @@
       state.filters.folder = "";
       saveState();
       renderSpaceListInSidebar();
+      // 스페이스 단위 분류 폴더 규칙을 백엔드에서 다시 로드 (스페이스마다 독립)
+      await loadFolderRulesFromBackend(true);
       renderFolderNav();
       renderFolderFilter();
       renderMetrics();
@@ -3967,7 +3978,7 @@
     }
 
     function renderMetrics() {
-      const docs = getCurrentTeamDocs();
+      const docs = getCurrentSpaceDocs();
       const total = docs.length;
       const high = docs.filter((doc) => doc.confidence >= 70).length;
       const avgConfidence = total ? Math.round(docs.reduce((sum, doc) => sum + doc.confidence, 0) / total) : 0;
@@ -4043,7 +4054,7 @@
     function renderDashboard() {
       const cards = qs("#dashboardCards");
       if (!cards) return;
-      const docs = getCurrentTeamDocs().filter((doc) => !doc.archived);
+      const docs = getCurrentSpaceDocs().filter((doc) => !doc.archived);
       const pendingReview = getCurrentTeamPendingReviewItems();
       const today = new Date().toISOString().slice(0, 10);
       const total = docs.length;
@@ -6215,7 +6226,7 @@
         return false;
       }
       try {
-        const response = await fetchApi(apiPathWithTeam("/api/folder-rules"), { method: "GET" }, 6000);
+        const response = await fetchApi(apiPathWithTeamSpace("/api/folder-rules"), { method: "GET" }, 6000);
         const data = await response.json();
         const backendRules = Array.isArray(data.folder_rules) ? data.folder_rules : [];
         if (!data.ok || !backendRules.length) throw new Error("Invalid folder rules response");
@@ -6262,7 +6273,7 @@
       }
       if (!currentApiBaseUrl) return false;
       try {
-        const response = await fetchApi(apiPathWithTeam("/api/folder-rules"), {
+        const response = await fetchApi(apiPathWithTeamSpace("/api/folder-rules"), {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -6297,7 +6308,7 @@
       }
       if (!currentApiBaseUrl) return false;
       try {
-        const response = await fetchApi(apiPathWithTeam("/api/folder-rules/reset"), { method: "POST" }, 8000);
+        const response = await fetchApi(apiPathWithTeamSpace("/api/folder-rules/reset"), { method: "POST" }, 8000);
         const data = await response.json();
         if (!data.ok || !Array.isArray(data.folder_rules)) throw new Error("Invalid folder rules reset response");
         state.folderRules = normalizeFolderRules(data.folder_rules);
@@ -6432,7 +6443,7 @@
     }
 
     function filteredDocs() {
-      return applyDocFilters(getCurrentTeamDocs(), getDocFilters());
+      return applyDocFilters(getCurrentSpaceDocs(), getDocFilters());
     }
 
     function hasActiveDocFilters() {
@@ -7717,7 +7728,7 @@
         return;
       }
       const interpreted = interpretSearchQuery(query);
-      const scored = getCurrentTeamDocs().map((doc) => {
+      const scored = getCurrentSpaceDocs().map((doc) => {
         const structuredLocations = getStructuredSearchLocations(doc, interpreted);
         if (!matchesInterpretedSearch(doc, interpreted, structuredLocations)) return null;
         const textLocations = interpreted.textQuery ? getDocMatchLocations(doc, interpreted.textQuery) : [];
@@ -8334,7 +8345,7 @@
 
     function renderArchive() {
       const list = qs("#archiveList");
-      const rows = getCurrentTeamDocs()
+      const rows = getCurrentSpaceDocs()
         .filter((doc) => !doc.archived)
         .map((doc) => ({
           ...doc,
@@ -8371,7 +8382,7 @@
     }
 
     function archiveAllSuggested() {
-      const candidates = getCurrentTeamDocs().filter((doc) => !doc.archived && doc.lastViewedDays >= 90);
+      const candidates = getCurrentSpaceDocs().filter((doc) => !doc.archived && doc.lastViewedDays >= 90);
       if (!candidates.length) {
         showToast("처리할 아카이브 제안 항목이 없습니다.", "info");
         return;
