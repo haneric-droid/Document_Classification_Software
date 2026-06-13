@@ -1231,6 +1231,34 @@ def delete_folder(folder_id: str, team_id: str = Query(DEFAULT_TEAM_ID), space_i
     }
 
 
+@app.patch("/api/folders/{folder_id}")
+def rename_folder(folder_id: str, payload: dict = Body(...), team_id: str = Query(DEFAULT_TEAM_ID), space_id: str = Query(""), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    """폴더 이름(및 아이콘)을 변경한다."""
+    normalized_team_id = normalize_team_id(team_id)
+    check_team_access(normalized_team_id, current_user.id, db)
+    resolved_space_id = resolve_space_id(db, normalized_team_id, space_id)
+    rule = (
+        db.query(FolderRule)
+        .filter(FolderRule.space_id == resolved_space_id, FolderRule.folder_id == folder_id)
+        .first()
+    )
+    if not rule:
+        raise HTTPException(status_code=404, detail="폴더를 찾을 수 없습니다.")
+    new_name = str(payload.get("name") or "").strip()
+    if new_name:
+        rule.name = new_name
+    if payload.get("icon"):
+        rule.icon = str(payload.get("icon")).strip()
+    rule.updated_at = datetime.utcnow()
+    db.commit()
+    rules = get_space_folder_rules(db, resolved_space_id)
+    return {
+        "ok": True,
+        "folder": {"id": folder_id, "name": rule.name},
+        "folder_rules": [serialize_folder_rule(rule) for rule in rules],
+    }
+
+
 @app.post("/api/analyze")
 async def analyze(file: UploadFile = File(...), current_user: User = Depends(get_current_user)) -> dict:
     start = time.perf_counter()
