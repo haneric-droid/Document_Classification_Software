@@ -2749,6 +2749,24 @@
                 <span class="badge info">PDF DOCX TXT HWPX PPTX XLSX CSV</span>
               </div>
               <div class="surface-body">
+                <div id="uploadModeBar" style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+                  <button class="upmode-btn" data-mode="auto" type="button" style="flex:1; min-width:130px; text-align:left; padding:8px 10px; border:2px solid var(--accent); border-radius:8px; background:var(--surface); cursor:pointer;">
+                    <div style="font-size:12px; font-weight:700;"><i class="ti ti-robot"></i> AI 자동 분류</div>
+                    <div style="font-size:11px; color:var(--text-3); margin-top:2px;">내용 보고 폴더 자동 배정</div>
+                  </button>
+                  <button class="upmode-btn" data-mode="direct" type="button" style="flex:1; min-width:130px; text-align:left; padding:8px 10px; border:1px solid var(--border-2); border-radius:8px; background:var(--surface); cursor:pointer;">
+                    <div style="font-size:12px; font-weight:700;"><i class="ti ti-pin"></i> 이 폴더에 직접</div>
+                    <div style="font-size:11px; color:var(--text-3); margin-top:2px;">분류 없이 지정 폴더에</div>
+                  </button>
+                  <button class="upmode-btn" data-mode="folder" type="button" style="flex:1; min-width:130px; text-align:left; padding:8px 10px; border:1px solid var(--border-2); border-radius:8px; background:var(--surface); cursor:pointer;">
+                    <div style="font-size:12px; font-weight:700;"><i class="ti ti-folder-up"></i> 폴더째 올리기</div>
+                    <div style="font-size:11px; color:var(--text-3); margin-top:2px;">구조 그대로 폴더 추가</div>
+                  </button>
+                </div>
+                <div id="directTargetRow" style="display:none; align-items:center; gap:8px; margin-bottom:10px; padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px;">
+                  <span style="font-size:12px; color:var(--text-2); flex-shrink:0;"><i class="ti ti-target"></i> 넣을 폴더:</span>
+                  <select class="select" id="directTargetSelect" style="flex:1; min-width:0;"></select>
+                </div>
                 <div class="drop-zone" id="dropZone" tabindex="0" role="button" aria-label="파일 업로드">
                   <div>
                     <div class="drop-icon"><i class="ti ti-upload"></i></div>
@@ -3505,7 +3523,9 @@
       filters: { ...DEFAULT_DOC_FILTERS },
       activeTab: "upload",
       autoSaveEnabled: false,
-      autoSaveThreshold: 65
+      autoSaveThreshold: 65,
+      uploadMode: "auto",
+      uploadTargetFolderId: ""
     };
 
     let processSeq = 0;
@@ -3657,6 +3677,9 @@
 
       qs("#teamSelect").addEventListener("change", onTeamChange);
       qs("#addSpaceBtn").addEventListener("click", onCreateSpace);
+      qsa(".upmode-btn").forEach((b) => b.addEventListener("click", () => setUploadMode(b.dataset.mode)));
+      const directSel = qs("#directTargetSelect");
+      if (directSel) directSel.addEventListener("change", (e) => { state.uploadTargetFolderId = e.target.value; saveState(); });
       qs("#processList").addEventListener("click", onProcessClick);
       qs("#docsFilterQuery").addEventListener("input", (event) => updateDocFilter("query", event.target.value));
       qs("#folderFilter").addEventListener("change", (event) => updateDocFilter("folder", event.target.value));
@@ -4544,6 +4567,7 @@
       });
 
       renderFolderBreadcrumb();
+      renderUploadModeBar();
     }
 
     // 현재 선택한 폴더의 경로(현재 위치) 표시
@@ -4604,6 +4628,96 @@
       } catch (error) {
         showToast("하위 폴더 추가에 실패했습니다.", "warning");
       }
+    }
+
+    // 업로드 방식 바 렌더 (AI 자동 / 직접 / 폴더째)
+    function renderUploadModeBar() {
+      const mode = state.uploadMode || "auto";
+      qsa(".upmode-btn").forEach((btn) => {
+        const on = btn.dataset.mode === mode;
+        btn.style.border = on ? "2px solid var(--accent)" : "1px solid var(--border-2)";
+      });
+      const directRow = qs("#directTargetRow");
+      if (directRow) directRow.style.display = mode === "direct" ? "flex" : "none";
+      if (mode === "direct") {
+        const sel = qs("#directTargetSelect");
+        if (sel) {
+          const rules = getFolderRules().filter((f) => f.id !== "other");
+          sel.innerHTML = rules.map((f) => `<option value="${escapeAttr(f.id)}">${escapeHTML(getFolderPath(f.id))}</option>`).join("");
+          if (!state.uploadTargetFolderId || !rules.some((f) => f.id === state.uploadTargetFolderId)) {
+            const selName = state.filters && state.filters.folder;
+            const cur = selName ? rules.find((f) => f.name === selName) : null;
+            state.uploadTargetFolderId = cur ? cur.id : (rules[0] ? rules[0].id : "");
+          }
+          sel.value = state.uploadTargetFolderId;
+        }
+      }
+    }
+
+    function setUploadMode(mode) {
+      state.uploadMode = mode;
+      saveState();
+      renderUploadModeBar();
+      const notes = {
+        auto: "AI가 내용을 보고 자동으로 폴더를 정합니다.",
+        direct: "분류 없이 선택한 폴더에 바로 저장합니다.",
+        folder: "폴더를 통째로 올리면 하위 폴더 구조 그대로 분류 폴더가 만들어지고 파일이 그 안에 저장됩니다."
+      };
+      showToast(notes[mode] || "", "info");
+    }
+
+    async function createFolderReturnId(name, parentFolderId) {
+      try {
+        const res = await fetchApi("/api/folders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ team_id: getCurrentTeamId(), space_id: state.spaceId || "", name, parent_folder_id: parentFolderId || "", icon: "ti-folder" })
+        }, 8000);
+        const data = await res.json();
+        return data.ok && data.folder ? data.folder.id : "";
+      } catch (e) { return ""; }
+    }
+
+    // ② 폴더째 올리기: 업로드한 폴더 구조 그대로 분류 폴더 생성 + 파일을 각 폴더에 직접 저장
+    async function handleFolderAsFolderUpload(files) {
+      if (!currentApiBaseUrl) { await checkBackendHealth(); }
+      if (!currentApiBaseUrl) { showToast("백엔드에 연결할 수 없어 폴더째 업로드를 할 수 없습니다.", "warning"); return; }
+      const rootName = files[0].webkitRelativePath.split("/")[0];
+      const selName = state.filters && state.filters.folder;
+      const selRule = selName ? getFolderRules().find((f) => f.name === selName) : null;
+      const parentOfRoot = selRule ? selRule.id : "";
+      showToast(`"${rootName}" 폴더 구조를 만드는 중...`, "info");
+
+      const rootId = await createFolderReturnId(rootName, parentOfRoot);
+      if (!rootId) { showToast("폴더 생성에 실패했습니다.", "warning"); return; }
+
+      const subset = {};
+      files.forEach((f) => {
+        if (f.name.startsWith(".")) return;
+        const parts = f.webkitRelativePath.split("/");
+        const sub = parts.length >= 3 ? parts[1] : "";
+        (subset[sub] = subset[sub] || []).push(f);
+      });
+
+      const subIds = {};
+      const fileTargets = [];
+      for (const sub of Object.keys(subset)) {
+        let folderId = rootId;
+        if (sub) {
+          if (!subIds[sub]) subIds[sub] = await createFolderReturnId(sub, rootId);
+          folderId = subIds[sub] || rootId;
+        }
+        subset[sub].forEach((f) => fileTargets.push({ file: f, folderId }));
+      }
+
+      await loadFolderRulesFromBackend(true);
+      renderFolderNav();
+      renderFolderFilter();
+
+      const batchId = fileTargets.length > 1 ? createBatchSummary(fileTargets.length) : "";
+      fileTargets.forEach((t) => startProcessing(t.file, batchId, { mode: "direct", directFolderId: t.folderId }));
+      setTab("upload");
+      showToast(`"${rootName}" 구조로 ${fileTargets.length}개 파일을 저장합니다.`, "success");
     }
 
     function renderFolderFilter() {
@@ -4975,13 +5089,25 @@
 
       // 폴더 업로드 감지 (webkitRelativePath 있으면 폴더)
       const isFolderUpload = files.some(f => f.webkitRelativePath && f.webkitRelativePath.includes("/"));
-      if (isFolderUpload) {
+      const mode = state.uploadMode || "auto";
+
+      // ② 폴더째 올리기 — 구조 보존 저장
+      if (mode === "folder" && isFolderUpload) {
+        handleFolderAsFolderUpload(files);
+        return;
+      }
+
+      // AI 자동 모드에서 폴더 업로드 시 기존 하위폴더 제안 동작 유지
+      if (mode === "auto" && isFolderUpload) {
         const folderName = files[0].webkitRelativePath.split("/")[0];
         scheduleFolderAnalysis(files, folderName);
       }
 
+      // ① 직접 넣기 — 분류 없이 지정 폴더로
+      const directFolderId = mode === "direct" ? (state.uploadTargetFolderId || "") : "";
+      const effectiveMode = mode === "folder" ? "auto" : mode; // 폴더모드인데 단일파일이면 auto로
       const batchId = files.length > 1 ? createBatchSummary(files.length) : "";
-      files.forEach((file) => startProcessing(file, batchId));
+      files.forEach((file) => startProcessing(file, batchId, { mode: effectiveMode, directFolderId }));
       setTab("upload");
     }
 
@@ -5093,11 +5219,13 @@
       };
     }
 
-    async function startProcessing(file, batchId = "") {
+    async function startProcessing(file, batchId = "", opts = {}) {
       const id = `proc-${++processSeq}`;
       const fileName = file.name || "이름없는_문서";
       const fileSize = Number(file.size || 0);
       const fileType = getFileType(file);
+      const uploadMode = opts.mode || "auto";
+      const directFolderId = opts.directFolderId || "";
       const evidence = {
         mode: fileType === "pdf" ? "백엔드 PDF 분석 대기" : "시뮬레이션 분석 대기",
         text: "증거 패키지를 준비 중입니다.",
@@ -5114,6 +5242,8 @@
         fileType,
         fileSize,
         fileObject: file,
+        uploadMode,
+        directFolderId,
         evidence,
         recs: [],
         selectedIndex: 0,
@@ -5493,18 +5623,37 @@
       await runPhase(id, 2, 390);
       item.foundTerms = getDictionaryHits(`${item.fileName} ${item.evidence.text}`);
       await runPhase(id, 3, 520);
-      item.recs = classifyDocument(item.fileName, item.evidence.text);
-      // 임베딩 기반 의미 점수 보강 (모델 준비된 경우)
-      if (window._embeddingReady) {
-        item.recs = await boostWithEmbeddings(item.recs, `${item.fileName} ${item.evidence.text}`);
+      if (item.uploadMode === "direct" && item.directFolderId) {
+        // ① 직접 넣기 — 분류 없이 지정 폴더로 확정
+        const rule = getFolderRuleById(item.directFolderId);
+        item.recs = [{
+          folderId: rule ? rule.id : "other",
+          folder: rule ? rule.name : "기타",
+          icon: rule ? rule.icon : "ti-folder",
+          score: 100, matched: [], contextMatched: [],
+          keywordScore: 0, contextScore: 0, nameScore: 0, feedbackScore: 0,
+          reason: "사용자가 직접 지정한 폴더입니다."
+        }];
+        item.decision = { status: "auto_ready", label: "직접 지정", className: "success", icon: "ti-pin", message: "분류 없이 지정한 폴더에 저장합니다.", score: 100, gap: 100 };
+        item.directPlacement = true;
+      } else {
+        item.recs = classifyDocument(item.fileName, item.evidence.text);
+        // 임베딩 기반 의미 점수 보강 (모델 준비된 경우)
+        if (window._embeddingReady) {
+          item.recs = await boostWithEmbeddings(item.recs, `${item.fileName} ${item.evidence.text}`);
+        }
+        item.decision = getClassificationDecision(item.recs);
       }
-      item.decision = getClassificationDecision(item.recs);
       item.versionWarning = detectVersion(item.fileName);
       item.reviewNeeded = item.decision.status === "review_required";
       item.duplicateWarning = findSimilarExistingDoc(item.fileName, item.evidence.text, item.recs[0]);
       item.backendDuplicateWarning = await checkBackendDuplicates(item);
       item.summary = buildSummary(item.fileName, item.recs[0], item.foundTerms);
       completeProcess(id);
+      // 직접 지정·폴더째는 사람 확인 없이 바로 저장
+      if (item.directPlacement && !item.saved) {
+        saveProcessedDoc(id, "auto", { auto: true });
+      }
     }
 
     function runPhase(id, phase, duration) {
@@ -5572,7 +5721,8 @@
 
       if (item.reviewNeeded) enqueueReviewItem(item);
       updateBatchSummary(item);
-      if (state.autoSaveEnabled && decision.status === "auto_ready" && !item.backendDuplicateWarning && !item.duplicateWarning) {
+      // 직접 지정(①/②)은 runPipeline에서 따로 저장하므로 여기서는 제외
+      if (!item.directPlacement && state.autoSaveEnabled && decision.status === "auto_ready" && !item.backendDuplicateWarning && !item.duplicateWarning) {
         item.autoSavePending = true;
         saveProcessedDoc(id, "auto", { auto: true });
       }
@@ -10383,7 +10533,9 @@
           filters: normalizeFilterState(saved.filters, saved.selectedFolder || ""),
           activeTab: saved.activeTab || "upload",
           autoSaveEnabled: Boolean(saved.autoSaveEnabled),
-          autoSaveThreshold: clampThreshold(saved.autoSaveThreshold)
+          autoSaveThreshold: clampThreshold(saved.autoSaveThreshold),
+          uploadMode: saved.uploadMode || "auto",
+          uploadTargetFolderId: saved.uploadTargetFolderId || ""
         };
         state.selectedFolder = state.filters.folder || "";
         state.docsByTeam = buildDocsByTeam(saved.docsByTeam, saved.docs);
