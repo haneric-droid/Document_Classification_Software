@@ -2716,7 +2716,7 @@
         <section class="panel active" id="tab-upload">
           <div class="notice">
             <i class="ti ti-info-circle"></i>
-            <span>현재 버전은 FastAPI 기반으로 PDF/DOCX/TXT/HWPX/PPTX/XLSX/CSV 실제 텍스트 추출을 시도하고 SQLite DB에 문서 메타데이터를 저장합니다. HWP 바이너리와 이미지는 향후 OCR 또는 전용 파서가 필요한 형식으로 fallback 처리합니다.</span>
+            <span>PDF/DOCX/TXT/HWPX/PPTX/XLSX/CSV는 실제 텍스트를 추출하고, 이미지·스캔 PDF는 브라우저 OCR(한국어+영어)로 텍스트를 뽑아 분류합니다. HWP 바이너리는 전용 파서가 필요해 미지원입니다.</span>
           </div>
 
           <div class="auto-save-panel">
@@ -2725,6 +2725,12 @@
               <span><i class="ti ti-bolt"></i> 자동 저장 모드</span>
             </label>
             <span class="muted" id="autoSaveHelp">OFF: 추천 결과를 확인한 뒤 저장합니다.</span>
+          </div>
+          <div id="autoSaveThresholdRow" style="margin-top:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);">
+            <span style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;"><i class="ti ti-adjustments"></i>자동 저장 기준 점수</span>
+            <input id="autoSaveThreshold" type="range" min="50" max="90" step="5" value="65" style="flex:1;min-width:140px;accent-color:var(--accent);">
+            <span id="autoSaveThresholdValue" style="font-size:13px;font-weight:800;color:var(--accent);min-width:78px;text-align:right;">65점 이상</span>
+            <span class="muted" style="font-size:11px;flex-basis:100%;">이 점수 이상이면 사람 확인 없이 자동 저장됩니다. 낮출수록 개입이 줄지만 오분류 가능성이 늘어요. (50점 미만·기타·점수차 10점 미만은 항상 검토)</span>
           </div>
           <div style="margin-top:6px;font-size:11px;display:flex;align-items:center;gap:6px;color:var(--text-3)">
             <div class="pc-spinner" style="width:10px;height:10px;border-width:1.5px;flex-shrink:0"></div>
@@ -3497,7 +3503,8 @@
       selectedFolder: "",
       filters: { ...DEFAULT_DOC_FILTERS },
       activeTab: "upload",
-      autoSaveEnabled: false
+      autoSaveEnabled: false,
+      autoSaveThreshold: 65
     };
 
     let processSeq = 0;
@@ -3666,6 +3673,24 @@
         if (state.autoSaveEnabled) runAutoSaveForReadyItems();
         showToast(state.autoSaveEnabled ? "자동 저장 모드가 켜졌습니다." : "자동 저장 모드가 꺼졌습니다.", "info");
       });
+      const thresholdInput = qs("#autoSaveThreshold");
+      if (thresholdInput) {
+        // 드래그 중엔 표시만 갱신
+        thresholdInput.addEventListener("input", (event) => {
+          const v = clampThreshold(event.target.value);
+          const label = qs("#autoSaveThresholdValue");
+          if (label) label.textContent = `${v}점 이상`;
+        });
+        // 놓으면 확정: 저장 + 재판정 + 자동저장 재시도
+        thresholdInput.addEventListener("change", (event) => {
+          state.autoSaveThreshold = clampThreshold(event.target.value);
+          saveState();
+          renderAutoSaveSetting();
+          rerenderAllProcessResults();
+          if (state.autoSaveEnabled) runAutoSaveForReadyItems();
+          showToast(`자동 저장 기준을 ${state.autoSaveThreshold}점 이상으로 변경했습니다.`, "info");
+        });
+      }
       qs("#searchBtn").addEventListener("click", doSearch);
       qs("#searchInput").addEventListener("keydown", (event) => {
         if (event.key === "Enter") doSearch();
@@ -4804,6 +4829,11 @@
           ? "ON: 자동 분류 가능 문서는 바로 저장하고, 애매한 문서는 확인/검토로 보냅니다."
           : "OFF: 추천 결과를 확인한 뒤 저장합니다.";
       }
+      const threshold = clampThreshold(state.autoSaveThreshold);
+      const slider = qs("#autoSaveThreshold");
+      const valueLabel = qs("#autoSaveThresholdValue");
+      if (slider) slider.value = String(threshold);
+      if (valueLabel) valueLabel.textContent = `${threshold}점 이상`;
     }
 
     function runAutoSaveForReadyItems() {
@@ -5873,13 +5903,14 @@
           gap
         };
       }
-      if (topScore >= 80 && gap >= 10) {
+      const autoThreshold = clampThreshold(state.autoSaveThreshold);
+      if (topScore >= autoThreshold && gap >= 10) {
         return {
           status: "auto_ready",
           label: "자동 분류 가능",
           className: "success",
           icon: "ti-bolt",
-          message: "신뢰도가 높아 자동 분류 가능한 문서입니다.",
+          message: `신뢰도 ${topScore}점(기준 ${autoThreshold}점↑)으로 자동 분류 가능한 문서입니다.`,
           score: topScore,
           gap
         };
@@ -5997,6 +6028,17 @@
         refreshProcessResult(id);
         showToast("저장을 취소했습니다.", "info");
       }
+    }
+
+    function rerenderAllProcessResults() {
+      processStore.forEach((item, id) => {
+        if (item.saved) return;
+        // 임계값 변경 등으로 판정이 달라질 수 있어 재계산
+        if (Array.isArray(item.recs) && item.recs.length) {
+          item.decision = getClassificationDecision(item.recs);
+        }
+        refreshProcessResult(id);
+      });
     }
 
     function refreshProcessResult(id) {
@@ -10177,7 +10219,8 @@
           selectedFolder: saved.selectedFolder || "",
           filters: normalizeFilterState(saved.filters, saved.selectedFolder || ""),
           activeTab: saved.activeTab || "upload",
-          autoSaveEnabled: Boolean(saved.autoSaveEnabled)
+          autoSaveEnabled: Boolean(saved.autoSaveEnabled),
+          autoSaveThreshold: clampThreshold(saved.autoSaveThreshold)
         };
         state.selectedFolder = state.filters.folder || "";
         state.docsByTeam = buildDocsByTeam(saved.docsByTeam, saved.docs);
@@ -10205,9 +10248,16 @@
           selectedFolder: "",
           filters: defaultFilterState(),
           activeTab: "upload",
-          autoSaveEnabled: false
+          autoSaveEnabled: false,
+          autoSaveThreshold: 65
         };
       }
+    }
+
+    function clampThreshold(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return 65;
+      return Math.min(90, Math.max(50, Math.round(n / 5) * 5));
     }
 
     function saveState() {
