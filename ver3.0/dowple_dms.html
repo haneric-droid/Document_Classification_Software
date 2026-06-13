@@ -4222,27 +4222,87 @@
     }
 
     // 스페이스 생성
-    async function onCreateSpace() {
-      const name = (window.prompt("새 스페이스 이름을 입력하세요.") || "").trim();
-      if (!name) return;
-      if (!currentApiBaseUrl) {
-        await checkBackendHealth();
-      }
+    // 스페이스 생성 모달 (이름 + 분류 폴더 구성 방식 선택)
+    function onCreateSpace() {
+      const hasCurrentSpace = Boolean(state.spaceId && state.spaceName);
+      const backdrop = document.createElement("div");
+      backdrop.id = "createSpaceBackdrop";
+      backdrop.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;display:flex;align-items:center;justify-content:center;padding:16px;";
+      backdrop.innerHTML = `
+        <div role="dialog" aria-modal="true" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;max-width:440px;width:100%;box-shadow:var(--shadow);overflow:hidden;">
+          <div style="padding:16px 18px;border-bottom:1px solid var(--border);font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px;"><i class="ti ti-folder-plus"></i>새 스페이스 만들기</div>
+          <div style="padding:18px;display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <label style="font-size:12px;font-weight:700;color:var(--text-2);display:block;margin-bottom:6px;">스페이스 이름</label>
+              <input id="csName" class="select" type="text" placeholder="예: 2026 상반기 캠페인" style="width:100%;" autocomplete="off">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:700;color:var(--text-2);display:block;margin-bottom:8px;">분류 폴더 구성</label>
+              <label class="cs-opt" style="display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;margin-bottom:8px;">
+                <input type="radio" name="csSetup" value="default" checked style="margin-top:2px;">
+                <span><b>기본 분류 폴더로 시작</b><br><span style="font-size:11px;color:var(--text-3);">공고/계약/보고서 등 기본 16개 폴더</span></span>
+              </label>
+              <label class="cs-opt" style="display:${hasCurrentSpace ? "flex" : "none"};gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;margin-bottom:8px;">
+                <input type="radio" name="csSetup" value="copy" style="margin-top:2px;">
+                <span><b>현재 스페이스 폴더 복사</b><br><span style="font-size:11px;color:var(--text-3);">"${escapeHTML(state.spaceName || "")}"의 분류 폴더를 그대로 복제</span></span>
+              </label>
+              <label class="cs-opt" style="display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+                <input type="radio" name="csSetup" value="structure" style="margin-top:2px;">
+                <span><b>폴더 구조 업로드해서 만들기</b><br><span style="font-size:11px;color:var(--text-3);">실제 폴더트리를 올리면 폴더별 파일을 분석해 맞춤 분류 폴더를 추가 (기본 16개 + 업로드 폴더)</span></span>
+              </label>
+            </div>
+          </div>
+          <div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;">
+            <button class="btn" id="csCancel" type="button">취소</button>
+            <button class="btn btn-primary" id="csCreate" type="button"><i class="ti ti-check"></i>생성</button>
+          </div>
+        </div>`;
+      document.body.appendChild(backdrop);
+      const close = () => backdrop.remove();
+      backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+      qs("#csCancel", backdrop).addEventListener("click", close);
+      const nameInput = qs("#csName", backdrop);
+      nameInput.focus();
+      qs("#csCreate", backdrop).addEventListener("click", async () => {
+        const name = (nameInput.value || "").trim();
+        if (!name) { showToast("스페이스 이름을 입력해주세요.", "warn"); nameInput.focus(); return; }
+        const setup = (backdrop.querySelector('input[name="csSetup"]:checked') || {}).value || "default";
+        close();
+        await createSpaceWithSetup(name, setup);
+      });
+      nameInput.addEventListener("keydown", (e) => { if (e.key === "Enter") qs("#csCreate", backdrop).click(); });
+    }
+
+    async function createSpaceWithSetup(name, setup) {
+      if (!currentApiBaseUrl) { await checkBackendHealth(); }
       if (!currentApiBaseUrl) {
         showToast("백엔드에 연결할 수 없어 스페이스를 생성할 수 없습니다.", "warning");
         return;
       }
+      // ③ 구조 업로드는 기본 폴더로 스페이스를 만든 뒤, 업로드 폴더를 추가 분석
+      const body = {
+        team_id: normalizeTeamId(state.teamId),
+        name,
+        folder_setup: setup === "copy" ? "copy" : "default"
+      };
+      if (setup === "copy") body.copy_from_space_id = state.spaceId || "";
       try {
         const response = await fetchApi("/api/spaces", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ team_id: normalizeTeamId(state.teamId), name })
+          body: JSON.stringify(body)
         }, 8000);
         const data = await response.json();
         if (!data.ok || !data.space) throw new Error("스페이스 생성 응답이 올바르지 않습니다.");
         state.spaces.push(data.space);
         await selectSpace(data.space.id);
         showToast(`${name} 스페이스를 생성했습니다.`, "success");
+        if (setup === "structure") {
+          // 새 스페이스로 전환된 상태에서 폴더 구조 업로드 시작
+          showToast("폴더 구조를 선택하면 이 스페이스의 분류 폴더로 추가됩니다.", "info");
+          const input = qs("#structureInput");
+          if (input) input.click();
+        }
       } catch (error) {
         showToast("스페이스 생성에 실패했습니다.", "warning");
       }
@@ -5134,7 +5194,7 @@
           </div>
           <div class="struct-modal-footer">
             <button class="btn" id="structCancelBtn" type="button">취소</button>
-            <button class="btn btn-primary" id="structApplyBtn" type="button" disabled><i class="ti ti-check"></i> 이 팀에 분류 기준 적용</button>
+            <button class="btn btn-primary" id="structApplyBtn" type="button" disabled><i class="ti ti-check"></i> 이 스페이스에 분류 폴더 추가</button>
           </div>
         </div>`;
 
@@ -5149,11 +5209,18 @@
         document.getElementById("structProgressLabel").textContent = `${folderEntries.length}개 폴더 분석 완료`;
 
         document.getElementById("structApplyBtn").onclick = async () => {
+          const applyBtn = document.getElementById("structApplyBtn");
+          applyBtn.disabled = true;
+          applyBtn.innerHTML = `<i class="ti ti-loader-2"></i> 저장 중...`;
           await applyCustomFolderRules(teamId, generatedRules);
+          // 현재 스페이스 백엔드에도 저장(기본 16개 + 업로드 폴더 병합) 후 권위 데이터로 새로고침
+          await saveCustomFolderRulesToSpace(generatedRules);
+          await loadFolderRulesFromBackend(true);
           backdrop.remove();
+          renderSpaceListInSidebar();
           renderFolderNav();
           renderFolderFilter();
-          showToast(`"${rootFolder}" 구조가 "${getCurrentTeamName()}" 팀의 분류 기준으로 설정됐습니다.`, "success");
+          showToast(`"${rootFolder}" 구조가 "${state.spaceName || getCurrentTeamName()}" 스페이스의 분류 폴더로 추가됐습니다.`, "success");
         };
       }).catch(err => {
         document.getElementById("structStatusText").textContent = "분석 중 오류 발생: " + err.message;
@@ -7458,6 +7525,36 @@
         return true;
       } catch (error) {
         state.folderRules = folderRulesForTeam(getCurrentTeamId());
+        return false;
+      }
+    }
+
+    // 구조 업로드로 생성한 커스텀 폴더를 현재 스페이스 백엔드에 병합 저장 (기본 16개 + 커스텀)
+    async function saveCustomFolderRulesToSpace(rules) {
+      if (!currentApiBaseUrl) { await checkBackendHealth(); }
+      if (!currentApiBaseUrl) return false;
+      const payload = (Array.isArray(rules) ? rules : []).map((r) => ({
+        id: r.id,
+        folder_id: r.id,
+        team_id: getCurrentTeamId(),
+        name: r.name,
+        icon: r.icon || "ti-folder",
+        description: r.description || "",
+        keywords: Array.isArray(r.keywords) ? r.keywords : [],
+        contextTerms: Array.isArray(r.contextTerms) ? r.contextTerms : [],
+        context_terms: Array.isArray(r.contextTerms) ? r.contextTerms : [],
+        reason: r.reason || ""
+      }));
+      if (!payload.length) return false;
+      try {
+        const response = await fetchApi(apiPathWithTeamSpace("/api/folder-rules"), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folder_rules: payload })
+        }, 10000);
+        const data = await response.json();
+        return Boolean(data.ok);
+      } catch (error) {
         return false;
       }
     }
@@ -9837,7 +9934,8 @@
 
     function normalizeFolderRules(savedRules) {
       const saved = Array.isArray(savedRules) ? savedRules : [];
-      return FOLDERS.map((base) => {
+      const defaultIds = new Set(FOLDERS.map((f) => f.id));
+      const base = FOLDERS.map((base) => {
         const custom = saved.find((rule) => rule.id === base.id || rule.folder_id === base.id || rule.name === base.name || getFolderIdByAnyLabel(rule.name) === base.id) || {};
         const contextValue = custom.contextTerms ?? custom.context_terms ?? base.contextTerms.join(", ");
         return {
@@ -9847,9 +9945,33 @@
           keywords: parseListValue(Array.isArray(custom.keywords) ? custom.keywords.join(", ") : custom.keywords || base.keywords.join(", ")),
           description: String(custom.description || base.description || "").trim(),
           contextTerms: parseListValue(Array.isArray(contextValue) ? contextValue.join(", ") : contextValue),
-          reason: String(custom.reason || base.reason || "").trim()
+          reason: String(custom.reason || base.reason || "").trim(),
+          parentId: base.parentId ?? null,
+          level: base.level ?? 0
         };
       });
+      // 기본 16개에 속하지 않는 커스텀 폴더(구조 업로드 등)는 그대로 보존해 추가
+      const seenIds = new Set(base.map((b) => b.id));
+      const customs = [];
+      saved.forEach((rule) => {
+        const rid = rule.id || rule.folder_id;
+        if (!rid || defaultIds.has(rid) || seenIds.has(rid)) return;
+        seenIds.add(rid);
+        const ctx = rule.contextTerms ?? rule.context_terms ?? "";
+        customs.push({
+          id: rid,
+          name: String(rule.name || rid).trim(),
+          icon: String(rule.icon || "ti-folder").trim() || "ti-folder",
+          keywords: parseListValue(Array.isArray(rule.keywords) ? rule.keywords.join(", ") : rule.keywords || ""),
+          description: String(rule.description || "").trim(),
+          contextTerms: parseListValue(Array.isArray(ctx) ? ctx.join(", ") : ctx),
+          reason: String(rule.reason || "").trim(),
+          parentId: rule.parentId ?? null,
+          level: rule.level ?? 0,
+          isCustom: true
+        });
+      });
+      return [...base, ...customs];
     }
 
     function getFolderRules() {

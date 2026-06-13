@@ -900,9 +900,17 @@ def get_team_spaces(team_id: str, current_user: User = Depends(get_current_user)
 
 @app.post("/api/spaces")
 def create_space(payload: dict = Body(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
-    """새로운 스페이스 생성"""
+    """새로운 스페이스 생성
+
+    folder_setup: 분류 폴더 초기 구성 방식
+      - "default"(기본): 기본 16개 폴더 시딩
+      - "copy": copy_from_space_id 스페이스의 폴더 규칙 복제
+      - "empty": 시딩하지 않음 (구조 업로드 등으로 이후 채움)
+    """
     team_id = str(payload.get("team_id") or "").strip()
     space_name = str(payload.get("name") or "").strip()
+    folder_setup = str(payload.get("folder_setup") or "default").strip().lower()
+    copy_from_space_id = str(payload.get("copy_from_space_id") or "").strip()
 
     if not team_id:
         raise HTTPException(status_code=400, detail="팀 ID를 입력해주세요.")
@@ -921,8 +929,38 @@ def create_space(payload: dict = Body(...), current_user: User = Depends(get_cur
     )
     db.add(space)
     db.flush()
-    # 새 스페이스에 기본 분류 폴더 규칙 시딩
-    seed_folder_rules(db, space_id, normalized_team_id)
+
+    if folder_setup == "copy" and copy_from_space_id:
+        # 원본 스페이스의 폴더 규칙을 새 스페이스로 복제 (같은 팀 내에서만)
+        source = db.query(Space).filter(
+            Space.id == copy_from_space_id, Space.team_id == normalized_team_id
+        ).first()
+        if not source:
+            raise HTTPException(status_code=400, detail="복사할 원본 스페이스를 찾을 수 없습니다.")
+        source_rules = get_space_folder_rules(db, copy_from_space_id)
+        if source_rules:
+            for rule in source_rules:
+                db.add(FolderRule(
+                    id=folder_rule_db_id(space_id, rule.folder_id or rule.id),
+                    team_id=normalized_team_id,
+                    space_id=space_id,
+                    folder_id=rule.folder_id,
+                    name=rule.name,
+                    icon=rule.icon,
+                    description=rule.description,
+                    keywords=rule.keywords,
+                    context_terms=rule.context_terms,
+                    reason=rule.reason,
+                    updated_at=datetime.utcnow(),
+                ))
+        else:
+            seed_folder_rules(db, space_id, normalized_team_id)
+    elif folder_setup == "empty":
+        pass  # 폴더 규칙 시딩하지 않음 (구조 업로드 등으로 이후 채움)
+    else:
+        # default: 기본 16개 폴더 시딩
+        seed_folder_rules(db, space_id, normalized_team_id)
+
     db.commit()
     db.refresh(space)
 
@@ -1016,6 +1054,7 @@ def update_folder_rules(
     payload: Any = Body(...),
     team_id: str = Query(DEFAULT_TEAM_ID),
     space_id: str = Query(""),
+    replace: bool = Query(False),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -1025,6 +1064,25 @@ def update_folder_rules(
     incoming_rules = payload.get("folder_rules", payload.get("rules", [])) if isinstance(payload, dict) else payload
     if not isinstance(incoming_rules, list):
         raise HTTPException(status_code=400, detail="folder_rules must be a list")
+
+    # replace=True: 기존 폴더 규칙을 모두 비우고 들어온 규칙만 저장 (기본 16개 강제 추가 안 함)
+    # → 폴더 구조 업로드로 "맞춤 폴더만" 구성할 때 사용
+    if replace:
+        db.query(FolderRule).filter(FolderRule.space_id == resolved_space_id).delete(synchronize_session=False)
+        db.flush()
+        for index, raw_rule in enumerate(incoming_rules):
+            if not isinstance(raw_rule, dict):
+                continue
+            payload_rule = normalize_folder_rule_payload(raw_rule, resolved_space_id, normalized_team_id, index)
+            db.add(FolderRule(**payload_rule))
+        db.commit()
+        rules = get_space_folder_rules(db, resolved_space_id)
+        return {
+            "ok": True,
+            "team_id": normalized_team_id,
+            "space_id": resolved_space_id,
+            "folder_rules": [serialize_folder_rule(rule) for rule in rules],
+        }
 
     existing_by_folder_id = {
         rule.folder_id or rule.id: rule
