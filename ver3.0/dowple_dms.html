@@ -4589,8 +4589,8 @@
         });
       });
       // 액션: 추가 / 이름변경 / 삭제
-      qsa(".fa-add").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); openAddChildFolderModal(b.dataset.fid, b.dataset.fname); }));
-      qsa(".fa-rename").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); renameFolder(b.dataset.fid, b.dataset.fname); }));
+      qsa(".fa-add").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); startInlineAddChild(b.dataset.fid, b.dataset.fname, b); }));
+      qsa(".fa-rename").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); startInlineRename(b.dataset.fid, b.dataset.fname, b); }));
       qsa(".fa-delete").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); deleteFolder(b.dataset.fid, b.dataset.fname); }));
       // 범위 체크박스(선택한 폴더 모드)
       qsa(".scope-folder-side").forEach((cb) => cb.addEventListener("change", (e) => {
@@ -4623,11 +4623,37 @@
       renderUploadModeBar();
     }
 
-    // 폴더 이름 변경 (백엔드 PATCH)
-    async function renameFolder(folderId, currentName) {
-      const raw = prompt(`"${currentName}" 폴더의 새 이름:`, currentName);
-      const name = (raw || "").trim();
-      if (!name || name === currentName) return;
+    // 폴더 이름 변경 — 그 자리에서 인라인 편집
+    function startInlineRename(folderId, currentName, btn) {
+      const row = btn.closest(".folder-row");
+      if (!row) return;
+      const openSpan = row.querySelector(".folder-open");
+      if (!openSpan || row.querySelector(".inline-edit")) return;
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = currentName;
+      input.className = "select inline-edit";
+      input.style.cssText = "flex:1;min-width:0;height:26px;font-size:13px;padding:2px 6px";
+      openSpan.style.display = "none";
+      openSpan.parentNode.insertBefore(input, openSpan);
+      input.focus(); input.select();
+      let done = false;
+      const finish = (restore) => { if (done) return; done = true; input.remove(); openSpan.style.display = ""; };
+      const commit = async () => {
+        if (done) return;
+        const name = input.value.trim();
+        finish();
+        if (name && name !== currentName) await doRenameFolder(folderId, name);
+      };
+      input.addEventListener("click", (e) => e.stopPropagation());
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); commit(); }
+        else if (e.key === "Escape") { e.preventDefault(); finish(); }
+      });
+      input.addEventListener("blur", commit);
+    }
+
+    async function doRenameFolder(folderId, name) {
       if (!currentApiBaseUrl) { await checkBackendHealth(); }
       if (!currentApiBaseUrl) { showToast("백엔드에 연결할 수 없습니다.", "warning"); return; }
       try {
@@ -4683,15 +4709,42 @@
       });
     }
 
-    async function openAddChildFolderModal(parentId, parentName) {
-      const raw = prompt(`"${parentName}" 안에 만들 하위 폴더 이름을 입력하세요:`);
-      const name = (raw || "").trim();
-      if (!name) return;
+    // 하위 폴더 추가 — 그 자리에서 인라인 입력
+    function startInlineAddChild(parentId, parentName, btn) {
+      const row = btn.closest(".folder-row");
+      const treeItem = btn.closest(".folder-tree-item");
+      if (!row || !treeItem || treeItem.querySelector(".inline-add")) return;
+      const pad = (parseInt(row.style.paddingLeft, 10) || 8) + 21;
+      const wrap = document.createElement("div");
+      wrap.style.cssText = `padding:4px 8px 4px ${pad}px`;
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "select inline-add";
+      input.placeholder = "새 하위 폴더 이름...";
+      input.style.cssText = "width:100%;height:26px;font-size:12px;padding:2px 6px";
+      wrap.appendChild(input);
+      // 부모 행 바로 아래(자식 컨테이너 앞)에 삽입
+      row.insertAdjacentElement("afterend", wrap);
+      input.focus();
+      let done = false;
+      const cancel = () => { if (done) return; done = true; wrap.remove(); };
+      const commit = async () => {
+        if (done) return; done = true;
+        const name = input.value.trim();
+        wrap.remove();
+        if (name) await doAddChildFolder(parentId, parentName, name);
+      };
+      input.addEventListener("click", (e) => e.stopPropagation());
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); commit(); }
+        else if (e.key === "Escape") { e.preventDefault(); cancel(); }
+      });
+      input.addEventListener("blur", commit);
+    }
+
+    async function doAddChildFolder(parentId, parentName, name) {
       if (!currentApiBaseUrl) { await checkBackendHealth(); }
-      if (!currentApiBaseUrl) {
-        showToast("백엔드에 연결할 수 없어 하위 폴더를 만들 수 없습니다.", "warning");
-        return;
-      }
+      if (!currentApiBaseUrl) { showToast("백엔드에 연결할 수 없어 하위 폴더를 만들 수 없습니다.", "warning"); return; }
       try {
         const response = await fetchApi("/api/folders", {
           method: "POST",
@@ -4707,10 +4760,9 @@
         }, 8000);
         const data = await response.json();
         if (!data.ok) throw new Error("하위 폴더 생성 응답이 올바르지 않습니다.");
-        // 권위 데이터(백엔드)로 폴더 새로고침
         await loadFolderRulesFromBackend(true);
         state._expandedFolders = state._expandedFolders || {};
-        state._expandedFolders[parentId] = true; // 추가한 부모를 펼쳐서 보여줌
+        state._expandedFolders[parentId] = true;
         renderFolderNav();
         renderFolderFilter();
         showToast(`"${name}" 하위 폴더가 추가되었습니다.`, "success");
