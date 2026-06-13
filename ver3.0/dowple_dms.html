@@ -2767,6 +2767,7 @@
                   <span style="font-size:12px; color:var(--text-2); flex-shrink:0;"><i class="ti ti-target"></i> 넣을 폴더:</span>
                   <select class="select" id="directTargetSelect" style="flex:1; min-width:0;"></select>
                 </div>
+                <div id="classifyScopeBar" style="display:none; margin-bottom:10px; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px;"></div>
                 <div class="drop-zone" id="dropZone" tabindex="0" role="button" aria-label="파일 업로드">
                   <div>
                     <div class="drop-icon"><i class="ti ti-upload"></i></div>
@@ -3525,7 +3526,8 @@
       autoSaveEnabled: false,
       autoSaveThreshold: 65,
       uploadMode: "auto",
-      uploadTargetFolderId: ""
+      uploadTargetFolderId: "",
+      classifyScope: { mode: "all", folderIds: [], depth: 0 }
     };
 
     let processSeq = 0;
@@ -4652,6 +4654,41 @@
           sel.value = state.uploadTargetFolderId;
         }
       }
+      renderClassifyScope();
+    }
+
+    // 분류 범위(전체/선택한 폴더)+깊이 UI — AI 자동 분류 모드에서만 표시
+    function renderClassifyScope() {
+      const bar = qs("#classifyScopeBar");
+      if (!bar) return;
+      if ((state.uploadMode || "auto") !== "auto") { bar.style.display = "none"; return; }
+      bar.style.display = "block";
+      if (!state.classifyScope) state.classifyScope = { mode: "all", folderIds: [], depth: 0 };
+      const scope = state.classifyScope;
+      const roots = getRootFolders();
+      const chip = (m, label) => `<button class="scope-range" data-mode="${m}" type="button" style="font-size:12px;padding:4px 12px;border-radius:999px;cursor:pointer;border:${scope.mode===m?"0":"1px solid var(--border-2)"};background:${scope.mode===m?"var(--accent-soft)":"transparent"};color:${scope.mode===m?"var(--accent-2)":"var(--text-2)"}">${label}</button>`;
+      let html = `<div style="display:flex;gap:8px;align-items:center;font-size:12px;"><span style="color:var(--text-2)">분류 범위</span>${chip("all","전체 폴더")}${chip("selected","선택한 폴더")}</div>`;
+      if (scope.mode === "selected") {
+        html += `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">` + roots.map((f) => {
+          const on = scope.folderIds.includes(f.id);
+          return `<label style="font-size:12px;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:${on?"var(--accent-soft)":"var(--surface)"}"><input type="checkbox" class="scope-folder" value="${escapeAttr(f.id)}" ${on?"checked":""}> ${escapeHTML(f.name)}</label>`;
+        }).join("") + `</div>`;
+        const d0 = Number(scope.depth) || 0;
+        const dbtn = (d, label) => `<button class="scope-depth" data-d="${d}" type="button" style="font-size:11px;padding:5px 10px;border:0;border-right:1px solid var(--border);cursor:pointer;background:${d0===d?"var(--accent-soft)":"transparent"};color:${d0===d?"var(--accent-2)":"var(--text-2)"}">${label}</button>`;
+        html += `<div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:12px;color:var(--text-2)">분류 깊이</span><div style="display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden">${dbtn(0,"이 폴더만")}${dbtn(1,"+1단계")}${dbtn(2,"+2단계")}${dbtn(99,"끝까지")}</div></div>`;
+        const cands = getScopeCandidates() || [];
+        const names = cands.slice(0, 12).map((c) => escapeHTML(c.name)).join(", ");
+        html += `<div style="margin-top:8px;font-size:11px;color:var(--text-3)"><i class="ti ti-arrow-guide"></i> 분류 후보 ${cands.length}개: ${names || "위에서 폴더를 선택하세요"}</div>`;
+      }
+      bar.innerHTML = html;
+      Array.from(bar.querySelectorAll(".scope-range")).forEach((b) => b.addEventListener("click", () => { scope.mode = b.dataset.mode; saveState(); renderClassifyScope(); }));
+      Array.from(bar.querySelectorAll(".scope-folder")).forEach((cb) => cb.addEventListener("change", () => {
+        const id = cb.value;
+        if (cb.checked) { if (!scope.folderIds.includes(id)) scope.folderIds.push(id); }
+        else { scope.folderIds = scope.folderIds.filter((x) => x !== id); }
+        saveState(); renderClassifyScope();
+      }));
+      Array.from(bar.querySelectorAll(".scope-depth")).forEach((b) => b.addEventListener("click", () => { scope.depth = Number(b.dataset.d); saveState(); renderClassifyScope(); }));
     }
 
     function setUploadMode(mode) {
@@ -5637,7 +5674,7 @@
         item.decision = { status: "auto_ready", label: "직접 지정", className: "success", icon: "ti-pin", message: "분류 없이 지정한 폴더에 저장합니다.", score: 100, gap: 100 };
         item.directPlacement = true;
       } else {
-        item.recs = classifyDocument(item.fileName, item.evidence.text);
+        item.recs = classifyDocument(item.fileName, item.evidence.text, getScopeCandidates());
         // 임베딩 기반 의미 점수 보강 (모델 준비된 경우)
         if (window._embeddingReady) {
           item.recs = await boostWithEmbeddings(item.recs, `${item.fileName} ${item.evidence.text}`);
@@ -6875,14 +6912,44 @@
       return { score: 0, terms: [], reasonNote: "" };
     }
 
-    function classifyDocument(fileName, evidenceText) {
+    // 분류 범위(전체/선택한 폴더)+깊이에 따른 후보 폴더 집합. 전체면 null 반환(=모든 폴더)
+    function getScopeCandidates() {
+      const scope = state.classifyScope || { mode: "all" };
+      if (scope.mode !== "selected" || !Array.isArray(scope.folderIds) || !scope.folderIds.length) return null;
+      const rawDepth = Number(scope.depth);
+      const depth = rawDepth >= 99 ? Infinity : (Number.isFinite(rawDepth) ? rawDepth : 0);
+      function descend(fid, rem) {
+        const node = getFolderRuleById(fid);
+        if (!node) return [];
+        const children = getChildFolders(fid);
+        if (rem <= 0 || !children.length) return [node];
+        let out = [];
+        children.forEach((c) => { out = out.concat(descend(c.id, rem - 1)); });
+        return out;
+      }
+      const seen = new Set();
+      const result = [];
+      scope.folderIds.forEach((fid) => {
+        descend(fid, depth).forEach((c) => {
+          if (c && c.id !== "other" && !seen.has(c.id)) { seen.add(c.id); result.push(c); }
+        });
+      });
+      return result.length ? result : null;
+    }
+
+    function classifyDocument(fileName, evidenceText, candidateOverride) {
       const rawText = normalizeCase(`${fileName} ${evidenceText}`);
       const normalizedText = normalizeCase(normalizeText(`${fileName} ${evidenceText}`));
       const normalizedName = normalizeCase(normalizeText(fileName));
       const rawName = normalizeCase(fileName);
       const combinedText = `${fileName} ${evidenceText}`;
 
-      const nonOther = getFolderRules().filter((folder) => folder.id !== "other").map((folder) => {
+      const scoped = Array.isArray(candidateOverride) && candidateOverride.length > 0;
+      const folderSet = scoped
+        ? candidateOverride.filter((folder) => folder && folder.id !== "other")
+        : getFolderRules().filter((folder) => folder.id !== "other");
+
+      const nonOther = folderSet.map((folder) => {
         let matched = uniqueList([]);
         folder.keywords.forEach((keyword) => {
           if (termAppears(rawText, keyword) || termAppears(normalizedText, keyword)) matched.push(keyword);
@@ -6971,6 +7038,14 @@
         feedbackApplied: otherFeedback.score > 0,
         feedbackExamples: otherFeedback.examples
       });
+
+      // 범위 한정(선택한 폴더+깊이): 후보들만 점수순 Top3, 자동 계층 승격 생략
+      if (scoped) {
+        return [...nonOther, otherRec]
+          .filter((r, i, arr) => arr.findIndex((x) => x.folderId === r.folderId) === i)
+          .sort((a, b) => b.score - a.score || folderIndex(a.folder) - folderIndex(b.folder))
+          .slice(0, 3);
+      }
 
       // ── 계층 분류: 자식 폴더 우선 탐색 ──────────────────────────
       // 자식 폴더(level:1) 중 점수 60점↑ → 자식으로 확정
@@ -10535,7 +10610,10 @@
           autoSaveEnabled: Boolean(saved.autoSaveEnabled),
           autoSaveThreshold: clampThreshold(saved.autoSaveThreshold),
           uploadMode: saved.uploadMode || "auto",
-          uploadTargetFolderId: saved.uploadTargetFolderId || ""
+          uploadTargetFolderId: saved.uploadTargetFolderId || "",
+          classifyScope: (saved.classifyScope && typeof saved.classifyScope === "object")
+            ? { mode: saved.classifyScope.mode === "selected" ? "selected" : "all", folderIds: Array.isArray(saved.classifyScope.folderIds) ? saved.classifyScope.folderIds : [], depth: Number(saved.classifyScope.depth) || 0 }
+            : { mode: "all", folderIds: [], depth: 0 }
         };
         state.selectedFolder = state.filters.folder || "";
         state.docsByTeam = buildDocsByTeam(saved.docsByTeam, saved.docs);
