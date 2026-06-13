@@ -2633,6 +2633,7 @@
       </nav>
 
       <div class="side-label">분류 폴더</div>
+      <div id="folderBreadcrumb" style="display:none; font-size:11px; color:var(--text-2); padding:4px 8px; margin-bottom:4px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; align-items:center; gap:4px;"></div>
       <div class="folder-list" id="folderList"></div>
 
       <div class="system-box">
@@ -4515,6 +4516,7 @@
           state.filters.folder = button.dataset.folder;
           state.selectedFolder = state.filters.folder;
           renderFolderFilter();
+          renderFolderBreadcrumb();
           saveState();
           setTab("docs");
           renderDocs();
@@ -4540,31 +4542,68 @@
       qsa(".folder-add-child").forEach(btn => {
         btn.addEventListener("click", () => openAddChildFolderModal(btn.dataset.parentId, btn.dataset.parentName));
       });
+
+      renderFolderBreadcrumb();
     }
 
-    function openAddChildFolderModal(parentId, parentName) {
-      const name = prompt(`"${parentName}" 안에 만들 하위 폴더 이름을 입력하세요:`);
-      if (!name || !name.trim()) return;
-      const newId = `${parentId}_custom_${Date.now()}`;
-      const newFolder = {
-        id: newId,
-        name: name.trim(),
-        icon: "ti-folder",
-        parentId,
-        level: 1,
-        keywords: [],
-        contextTerms: [],
-        description: `${parentName}의 하위 폴더`,
-        reason: `${parentName} > ${name.trim()}`
-      };
-      // folderRules에 추가
-      const rules = getFolderRules();
-      rules.push(newFolder);
-      state.folderRules = rules;
-      saveState();
-      renderFolderNav();
-      renderFolderFilter();
-      showToast(`"${name.trim()}" 폴더가 추가되었습니다.`, "success");
+    // 현재 선택한 폴더의 경로(현재 위치) 표시
+    function renderFolderBreadcrumb() {
+      const el = qs("#folderBreadcrumb");
+      if (!el) return;
+      const sel = state.filters && state.filters.folder;
+      if (!sel) { el.style.display = "none"; el.innerHTML = ""; return; }
+      const rule = getFolderRules().find((f) => f.name === sel);
+      const pathText = rule ? getFolderPath(rule.id) : sel;
+      el.style.display = "flex";
+      el.innerHTML = `<i class="ti ti-map-pin" style="font-size:12px;flex-shrink:0"></i>` +
+        `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${escapeHTML(pathText)}</span>` +
+        `<button type="button" id="bcClear" title="전체 보기" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:12px;padding:0;flex-shrink:0"><i class="ti ti-x"></i></button>`;
+      const clear = qs("#bcClear");
+      if (clear) clear.addEventListener("click", () => {
+        state.filters = normalizeFilterState(state.filters);
+        state.filters.folder = "";
+        state.selectedFolder = "";
+        renderFolderFilter();
+        renderFolderBreadcrumb();
+        saveState();
+        renderDocs();
+      });
+    }
+
+    async function openAddChildFolderModal(parentId, parentName) {
+      const raw = prompt(`"${parentName}" 안에 만들 하위 폴더 이름을 입력하세요:`);
+      const name = (raw || "").trim();
+      if (!name) return;
+      if (!currentApiBaseUrl) { await checkBackendHealth(); }
+      if (!currentApiBaseUrl) {
+        showToast("백엔드에 연결할 수 없어 하위 폴더를 만들 수 없습니다.", "warning");
+        return;
+      }
+      try {
+        const response = await fetchApi("/api/folders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            team_id: getCurrentTeamId(),
+            space_id: state.spaceId || "",
+            name,
+            parent_folder_id: parentId,
+            icon: "ti-folder",
+            description: `${parentName}의 하위 폴더`
+          })
+        }, 8000);
+        const data = await response.json();
+        if (!data.ok) throw new Error("하위 폴더 생성 응답이 올바르지 않습니다.");
+        // 권위 데이터(백엔드)로 폴더 새로고침
+        await loadFolderRulesFromBackend(true);
+        state._expandedFolders = state._expandedFolders || {};
+        state._expandedFolders[parentId] = true; // 추가한 부모를 펼쳐서 보여줌
+        renderFolderNav();
+        renderFolderFilter();
+        showToast(`"${name}" 하위 폴더가 추가되었습니다.`, "success");
+      } catch (error) {
+        showToast("하위 폴더 추가에 실패했습니다.", "warning");
+      }
     }
 
     function renderFolderFilter() {
