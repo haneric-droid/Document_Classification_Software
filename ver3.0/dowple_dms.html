@@ -7537,6 +7537,7 @@
         id: r.id,
         folder_id: r.id,
         team_id: getCurrentTeamId(),
+        parent_folder_id: r.parentId || r.parent_folder_id || "",
         name: r.name,
         icon: r.icon || "ti-folder",
         description: r.description || "",
@@ -7573,6 +7574,7 @@
               id: rule.id,
               folder_id: rule.id,
               team_id: getCurrentTeamId(),
+              parent_folder_id: rule.parentId || "",
               name: rule.name,
               icon: rule.icon,
               description: rule.description,
@@ -9966,7 +9968,7 @@
           description: String(rule.description || "").trim(),
           contextTerms: parseListValue(Array.isArray(ctx) ? ctx.join(", ") : ctx),
           reason: String(rule.reason || "").trim(),
-          parentId: rule.parentId ?? null,
+          parentId: rule.parentId ?? rule.parent_folder_id ?? null,
           level: rule.level ?? 0,
           isCustom: true
         });

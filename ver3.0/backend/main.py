@@ -314,6 +314,7 @@ class FolderRule(Base):
     team_id = Column(String(100), nullable=True, default=DEFAULT_TEAM_ID, index=True)
     space_id = Column(String(100), ForeignKey("spaces.id"), nullable=True, index=True)
     folder_id = Column(String(100), nullable=True, index=True)
+    parent_folder_id = Column(String(100), nullable=True, index=True)  # 같은 스페이스 내 부모 폴더의 folder_id (없으면 최상위)
     name = Column(String(255), nullable=False)
     icon = Column(String(100), nullable=True, default="")
     description = Column(Text, nullable=True, default="")
@@ -446,9 +447,12 @@ def ensure_folder_rule_schema() -> None:
             conn.execute(text("ALTER TABLE folder_rules ADD COLUMN reason TEXT DEFAULT ''"))
         if "space_id" not in columns:
             conn.execute(text("ALTER TABLE folder_rules ADD COLUMN space_id VARCHAR(100)"))
+        if "parent_folder_id" not in columns:
+            conn.execute(text("ALTER TABLE folder_rules ADD COLUMN parent_folder_id VARCHAR(100)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_folder_rules_team_id ON folder_rules (team_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_folder_rules_folder_id ON folder_rules (folder_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_folder_rules_space_id ON folder_rules (space_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_folder_rules_parent_folder_id ON folder_rules (parent_folder_id)"))
         for rule in DEFAULT_FOLDER_RULES:
             conn.execute(
                 text(
@@ -534,6 +538,7 @@ def default_folder_rule_payload(rule: dict, space_id: str, team_id: str) -> dict
         "id": folder_rule_db_id(space_id, folder_id),
         "team_id": normalize_team_id(team_id),
         "space_id": space_id,
+        "parent_folder_id": rule.get("parent_folder_id") or None,
         "folder_id": folder_id,
         "name": rule.get("name", folder_id),
         "icon": FOLDER_ICON_MAP.get(folder_id, ""),
@@ -594,6 +599,8 @@ def apply_folder_rule_payload(rule: FolderRule, payload: dict) -> None:
     rule.team_id = payload["team_id"]
     if payload.get("space_id"):
         rule.space_id = payload["space_id"]
+    if "parent_folder_id" in payload:
+        rule.parent_folder_id = payload["parent_folder_id"]
     rule.folder_id = payload["folder_id"]
     rule.name = payload["name"]
     rule.icon = payload.get("icon", "")
@@ -944,6 +951,7 @@ def create_space(payload: dict = Body(...), current_user: User = Depends(get_cur
                     id=folder_rule_db_id(space_id, rule.folder_id or rule.id),
                     team_id=normalized_team_id,
                     space_id=space_id,
+                    parent_folder_id=rule.parent_folder_id,
                     folder_id=rule.folder_id,
                     name=rule.name,
                     icon=rule.icon,
@@ -1137,6 +1145,88 @@ def reset_folder_rules_api(
         "ok": True,
         "team_id": normalized_team_id,
         "space_id": resolved_space_id,
+        "folder_rules": [serialize_folder_rule(rule) for rule in rules],
+    }
+
+
+@app.post("/api/folders")
+def create_folder(payload: dict = Body(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    """스페이스 안에 단일 폴더(루트 또는 하위)를 생성한다."""
+    team_id = str(payload.get("team_id") or "").strip()
+    space_id = str(payload.get("space_id") or "").strip()
+    name = str(payload.get("name") or "").strip()
+    parent_folder_id = str(payload.get("parent_folder_id") or "").strip() or None
+    icon = str(payload.get("icon") or "ti-folder").strip() or "ti-folder"
+
+    if not name:
+        raise HTTPException(status_code=400, detail="폴더 이름을 입력해주세요.")
+    normalized_team_id = normalize_team_id(team_id)
+    check_team_access(normalized_team_id, current_user.id, db)
+    resolved_space_id = resolve_space_id(db, normalized_team_id, space_id)
+
+    # 부모 폴더 검증 (있으면 같은 스페이스에 존재해야 함)
+    if parent_folder_id:
+        parent = (
+            db.query(FolderRule)
+            .filter(FolderRule.space_id == resolved_space_id, FolderRule.folder_id == parent_folder_id)
+            .first()
+        )
+        if not parent:
+            raise HTTPException(status_code=400, detail="부모 폴더를 찾을 수 없습니다.")
+
+    folder_id = f"folder-{uuid.uuid4().hex[:12]}"
+    db.add(FolderRule(
+        id=folder_rule_db_id(resolved_space_id, folder_id),
+        team_id=normalized_team_id,
+        space_id=resolved_space_id,
+        parent_folder_id=parent_folder_id,
+        folder_id=folder_id,
+        name=name,
+        icon=icon,
+        description=str(payload.get("description") or ""),
+        keywords=join_rule_terms(payload.get("keywords", "")),
+        context_terms=join_rule_terms(payload.get("contextTerms", payload.get("context_terms", ""))),
+        reason=str(payload.get("reason") or ""),
+        updated_at=datetime.utcnow(),
+    ))
+    db.commit()
+    rules = get_space_folder_rules(db, resolved_space_id)
+    return {
+        "ok": True,
+        "team_id": normalized_team_id,
+        "space_id": resolved_space_id,
+        "folder": {"id": folder_id, "name": name, "parent_folder_id": parent_folder_id or ""},
+        "folder_rules": [serialize_folder_rule(rule) for rule in rules],
+    }
+
+
+@app.delete("/api/folders/{folder_id}")
+def delete_folder(folder_id: str, team_id: str = Query(DEFAULT_TEAM_ID), space_id: str = Query(""), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    """폴더와 그 하위 폴더들을 삭제한다 (스페이스 범위). 문서는 미분류로 남긴다."""
+    normalized_team_id = normalize_team_id(team_id)
+    check_team_access(normalized_team_id, current_user.id, db)
+    resolved_space_id = resolve_space_id(db, normalized_team_id, space_id)
+
+    # 하위 폴더까지 재귀 수집
+    all_rules = get_space_folder_rules(db, resolved_space_id)
+    children_map: dict = {}
+    for r in all_rules:
+        children_map.setdefault(r.parent_folder_id or "", []).append(r.folder_id)
+    to_delete = []
+    stack = [folder_id]
+    while stack:
+        fid = stack.pop()
+        to_delete.append(fid)
+        stack.extend(children_map.get(fid, []))
+
+    db.query(FolderRule).filter(
+        FolderRule.space_id == resolved_space_id, FolderRule.folder_id.in_(to_delete)
+    ).delete(synchronize_session=False)
+    db.commit()
+    rules = get_space_folder_rules(db, resolved_space_id)
+    return {
+        "ok": True,
+        "deleted": to_delete,
         "folder_rules": [serialize_folder_rule(rule) for rule in rules],
     }
 
@@ -1844,6 +1934,7 @@ def serialize_folder_rule(rule: FolderRule) -> dict:
         "folder_id": folder_id,
         "team_id": rule.team_id or DEFAULT_TEAM_ID,
         "space_id": rule.space_id or "",
+        "parent_folder_id": rule.parent_folder_id or "",
         "name": rule.name,
         "icon": rule.icon or FOLDER_ICON_MAP.get(folder_id, ""),
         "description": rule.description or "",
@@ -1857,10 +1948,12 @@ def serialize_folder_rule(rule: FolderRule) -> dict:
 def normalize_folder_rule_payload(raw_rule: dict, space_id: str, team_id: str, index: int = 0) -> dict:
     base = DEFAULT_FOLDER_RULES[index] if index < len(DEFAULT_FOLDER_RULES) else DEFAULT_FOLDER_RULES[-1]
     folder_id = str(raw_rule.get("folder_id") or raw_rule.get("id") or base["id"]).strip() or base["id"]
+    parent_fid = str(raw_rule.get("parent_folder_id") or raw_rule.get("parentId") or "").strip() or None
     return {
         "id": folder_rule_db_id(space_id, folder_id),
         "team_id": normalize_team_id(team_id),
         "space_id": space_id,
+        "parent_folder_id": parent_fid,
         "folder_id": folder_id,
         "name": str(raw_rule.get("name") or base.get("name") or folder_id).strip(),
         "icon": str(raw_rule.get("icon") or FOLDER_ICON_MAP.get(folder_id, "")).strip(),
