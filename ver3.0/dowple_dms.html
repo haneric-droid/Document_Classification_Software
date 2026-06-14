@@ -2779,13 +2779,9 @@
                     <div style="font-size:12px; font-weight:700;"><i class="ti ti-robot"></i> AI 자동 분류</div>
                     <div style="font-size:11px; color:var(--text-3); margin-top:2px;">내용 보고 폴더 자동 배정</div>
                   </button>
-                  <button class="upmode-btn" data-mode="direct" type="button" style="flex:1; min-width:130px; text-align:left; padding:8px 10px; border:1px solid var(--border-2); border-radius:8px; background:var(--surface); cursor:pointer;">
-                    <div style="font-size:12px; font-weight:700;"><i class="ti ti-pin"></i> 이 폴더에 직접</div>
-                    <div style="font-size:11px; color:var(--text-3); margin-top:2px;">분류 없이 지정 폴더에</div>
-                  </button>
-                  <button class="upmode-btn" data-mode="folder" type="button" style="flex:1; min-width:130px; text-align:left; padding:8px 10px; border:1px solid var(--border-2); border-radius:8px; background:var(--surface); cursor:pointer;">
-                    <div style="font-size:12px; font-weight:700;"><i class="ti ti-folder-up"></i> 폴더째 올리기</div>
-                    <div style="font-size:11px; color:var(--text-3); margin-top:2px;">구조 그대로 폴더 추가</div>
+                  <button class="upmode-btn" data-mode="place" type="button" style="flex:1; min-width:130px; text-align:left; padding:8px 10px; border:1px solid var(--border-2); border-radius:8px; background:var(--surface); cursor:pointer;">
+                    <div style="font-size:12px; font-weight:700;"><i class="ti ti-folder-down"></i> 그대로 넣기</div>
+                    <div style="font-size:11px; color:var(--text-3); margin-top:2px;">분류 안 함 · 폴더는 구조 보존</div>
                   </button>
                   <button class="upmode-btn" data-mode="structure" type="button" style="flex:1; min-width:130px; text-align:left; padding:8px 10px; border:1px solid var(--border-2); border-radius:8px; background:var(--surface); cursor:pointer;">
                     <div style="font-size:12px; font-weight:700;"><i class="ti ti-folder-cog"></i> 폴더로 분류기준 만들기</div>
@@ -4783,14 +4779,15 @@
 
     // 업로드 방식 바 렌더 (AI 자동 / 직접 / 폴더째)
     function renderUploadModeBar() {
-      const mode = state.uploadMode || "auto";
+      const mode = normalizeUploadMode(state.uploadMode);
+      state.uploadMode = mode;
       qsa(".upmode-btn").forEach((btn) => {
         const on = btn.dataset.mode === mode;
         btn.style.border = on ? "2px solid var(--accent)" : "1px solid var(--border-2)";
       });
       const directRow = qs("#directTargetRow");
-      if (directRow) directRow.style.display = mode === "direct" ? "flex" : "none";
-      if (mode === "direct") {
+      if (directRow) directRow.style.display = mode === "place" ? "flex" : "none";
+      if (mode === "place") {
         const sel = qs("#directTargetSelect");
         if (sel) {
           const rules = getFolderRules().filter((f) => f.id !== "other");
@@ -4804,10 +4801,10 @@
         }
       }
 
-      // ① 방식에 맞는 선택 버튼만 표시 (파일 선택은 auto/direct에서만)
+      // ① 방식에 맞는 선택 버튼 (파일 선택은 분석할 폴더만 고르는 structure에선 숨김)
       const pickFile = qs("#pickFileBtn");
       const pickFolder = qs("#pickFolderBtn");
-      if (pickFile) pickFile.style.display = (mode === "auto" || mode === "direct") ? "" : "none";
+      if (pickFile) pickFile.style.display = (mode === "structure") ? "none" : "";
       if (pickFolder) {
         pickFolder.style.display = "";
         pickFolder.innerHTML = (mode === "structure")
@@ -4819,14 +4816,13 @@
       const dropTitle = qs("#dropTitle");
       const dropMeta = qs("#dropMeta");
       let targetName = "";
-      if (mode === "direct") {
+      if (mode === "place") {
         const t = getFolderRules().find((f) => f.id === state.uploadTargetFolderId);
         targetName = t ? getFolderPath(t.id) : "";
       }
       const hints = {
         auto: ["파일/폴더를 놓거나 클릭해 업로드", "AI가 내용을 보고 자동으로 폴더를 정합니다."],
-        direct: [`📌 "${targetName || "지정 폴더"}"에 바로 저장`, "분류 없이 위 폴더에 그대로 저장됩니다."],
-        folder: ["📁 폴더를 놓으면 구조 그대로 분류폴더 생성", "하위 폴더까지 만들어 파일을 그 안에 저장합니다."],
+        place: [`📥 "${targetName || "지정 폴더"}"에 그대로 넣기`, "분류 안 함. 파일은 위 폴더로, 폴더를 올리면 구조 그대로 보존합니다."],
         structure: ["🗂️ 분석할 폴더를 선택하세요", "폴더 내용을 분석해 분류 규칙(키워드)만 만듭니다. 파일은 저장하지 않습니다."]
       };
       if (dropTitle) dropTitle.textContent = (hints[mode] || hints.auto)[0];
@@ -4875,8 +4871,7 @@
       renderUploadModeBar();
       const notes = {
         auto: "AI가 내용을 보고 자동으로 폴더를 정합니다.",
-        direct: "분류 없이 선택한 폴더에 바로 저장합니다.",
-        folder: "폴더를 통째로 올리면 하위 폴더 구조 그대로 분류 폴더가 만들어지고 파일이 그 안에 저장됩니다.",
+        place: "분류 없이 그대로 넣습니다. 파일은 지정 폴더로, 폴더를 올리면 구조 그대로 보존합니다.",
         structure: "폴더를 분석해 분류 규칙(키워드)만 만듭니다. 파일은 저장하지 않습니다."
       };
       showToast(notes[mode] || "", "info");
@@ -4899,9 +4894,11 @@
       if (!currentApiBaseUrl) { await checkBackendHealth(); }
       if (!currentApiBaseUrl) { showToast("백엔드에 연결할 수 없어 폴더째 업로드를 할 수 없습니다.", "warning"); return; }
       const rootName = files[0].webkitRelativePath.split("/")[0];
-      const selName = state.filters && state.filters.folder;
-      const selRule = selName ? getFolderRules().find((f) => f.name === selName) : null;
-      const parentOfRoot = selRule ? selRule.id : "";
+      // "넣을 폴더" 드롭다운에서 고른 폴더 아래에 구조를 만든다 (없으면 최상위)
+      const target = state.uploadTargetFolderId
+        ? getFolderRules().find((f) => f.id === state.uploadTargetFolderId)
+        : null;
+      const parentOfRoot = target ? target.id : "";
       showToast(`"${rootName}" 폴더 구조를 만드는 중...`, "info");
 
       const rootId = await createFolderReturnId(rootName, parentOfRoot);
@@ -5305,11 +5302,15 @@
 
       // 폴더 업로드 감지 (webkitRelativePath 있으면 폴더)
       const isFolderUpload = files.some(f => f.webkitRelativePath && f.webkitRelativePath.includes("/"));
-      const mode = state.uploadMode || "auto";
+      const mode = normalizeUploadMode(state.uploadMode);
 
-      // ② 폴더째 올리기 — 구조 보존 저장
-      if (mode === "folder" && isFolderUpload) {
-        handleFolderAsFolderUpload(files);
+      // 그대로 넣기(분류 안 함): 폴더면 구조 보존, 파일이면 지정 폴더로 직접
+      if (mode === "place") {
+        if (isFolderUpload) { handleFolderAsFolderUpload(files); return; }
+        const directFolderId = state.uploadTargetFolderId || "";
+        const batchId = files.length > 1 ? createBatchSummary(files.length) : "";
+        files.forEach((file) => startProcessing(file, batchId, { mode: "direct", directFolderId }));
+        setTab("upload");
         return;
       }
 
@@ -5318,13 +5319,16 @@
         const folderName = files[0].webkitRelativePath.split("/")[0];
         scheduleFolderAnalysis(files, folderName);
       }
-
-      // ① 직접 넣기 — 분류 없이 지정 폴더로
-      const directFolderId = mode === "direct" ? (state.uploadTargetFolderId || "") : "";
-      const effectiveMode = mode === "folder" ? "auto" : mode; // 폴더모드인데 단일파일이면 auto로
       const batchId = files.length > 1 ? createBatchSummary(files.length) : "";
-      files.forEach((file) => startProcessing(file, batchId, { mode: effectiveMode, directFolderId }));
+      files.forEach((file) => startProcessing(file, batchId, { mode: "auto", directFolderId: "" }));
       setTab("upload");
+    }
+
+    // 구버전 모드값(direct/folder) → place 로 정규화
+    function normalizeUploadMode(m) {
+      if (m === "direct" || m === "folder") return "place";
+      if (m === "place" || m === "structure" || m === "auto") return m;
+      return "auto";
     }
 
     // 폴더 업로드 후 자동 하위 폴더 제안
@@ -10788,7 +10792,7 @@
           activeTab: saved.activeTab || "upload",
           autoSaveEnabled: Boolean(saved.autoSaveEnabled),
           autoSaveThreshold: clampThreshold(saved.autoSaveThreshold),
-          uploadMode: saved.uploadMode || "auto",
+          uploadMode: normalizeUploadMode(saved.uploadMode),
           uploadTargetFolderId: saved.uploadTargetFolderId || "",
           classifyScope: (saved.classifyScope && typeof saved.classifyScope === "object")
             ? { mode: saved.classifyScope.mode === "selected" ? "selected" : "all", folderIds: Array.isArray(saved.classifyScope.folderIds) ? saved.classifyScope.folderIds : [], depth: Number(saved.classifyScope.depth) || 0 }
