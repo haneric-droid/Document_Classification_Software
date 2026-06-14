@@ -2461,6 +2461,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <!-- Tesseract.js (OCR: 이미지/스캔 PDF, 한국어+영어) -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+  <!-- CFB (OLE 복합문서 리더: HWP PrvText 추출용) -->
+  <script src="https://cdn.jsdelivr.net/npm/cfb@1.2.2/dist/cfb.min.js"></script>
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -2743,7 +2745,7 @@
         <section class="panel active" id="tab-upload">
           <div class="notice">
             <i class="ti ti-info-circle"></i>
-            <span>PDF/DOCX/TXT/HWPX/PPTX/XLSX/CSV는 실제 텍스트를 추출하고, 이미지·스캔 PDF는 브라우저 OCR(한국어+영어)로 텍스트를 뽑아 분류합니다. HWP 바이너리는 전용 파서가 필요해 미지원입니다.</span>
+            <span>PDF/DOCX/TXT/HWPX/PPTX/XLSX/CSV는 실제 텍스트를 추출하고, 이미지·스캔 PDF는 브라우저 OCR(한국어+영어)로 분류합니다. HWP(구형)는 미리보기 텍스트(PrvText)를 읽어 분류합니다.</span>
           </div>
 
           <div class="auto-save-panel">
@@ -2772,7 +2774,7 @@
             <section class="surface">
               <div class="surface-header">
                 <div class="surface-title"><i class="ti ti-cloud-upload"></i>문서 업로드</div>
-                <span class="badge info">PDF DOCX TXT HWPX PPTX XLSX CSV</span>
+                <span class="badge info">PDF DOCX TXT HWP HWPX PPTX XLSX CSV</span>
               </div>
               <div class="surface-body">
                 <div id="uploadModeBar" style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
@@ -2806,6 +2808,7 @@
                       <span class="chip">PDF</span>
                       <span class="chip">DOCX</span>
                       <span class="chip">TXT</span>
+                      <span class="chip">HWP</span>
                       <span class="chip">HWPX</span>
                       <span class="chip">PPTX</span>
                       <span class="chip">XLSX</span>
@@ -6193,6 +6196,43 @@
           text = text.replace(/\s+/g, " ").trim();
           if (text.length < 50) return { ...fallback, extractionStatus: "failed", backendStatusText: "HWPX 텍스트 추출 실패", backendOk: false, backendWarning: "" };
           return { mode: "JSZip HWPX 브라우저 추출", text: text.slice(0, 4000), pageCount: 0, extractionStatus: "success", backendStatusText: "HWPX 브라우저 추출 완료", backendOk: true, backendWarning: "" };
+        }
+
+        // PPTX (ZIP 안의 슬라이드 XML 텍스트)
+        if (fileType === "pptx" && typeof JSZip !== 'undefined') {
+          const arrayBuffer = await file.arrayBuffer();
+          const zip = await JSZip.loadAsync(arrayBuffer);
+          const slideNames = Object.keys(zip.files).filter((n) => /^ppt\/slides\/slide\d+\.xml$/i.test(n)).sort();
+          let text = "";
+          for (const name of slideNames.slice(0, 40)) {
+            const xml = await zip.files[name].async("string");
+            const runs = xml.match(/<a:t>([\s\S]*?)<\/a:t>/g) || [];
+            text += runs.map((s) => s.replace(/<\/?a:t>/g, "")).join(" ") + "\n";
+          }
+          text = text.replace(/\s+/g, " ").trim();
+          if (text.length < 10) return { ...fallback, extractionStatus: "no_text_layer", backendStatusText: "PPTX 텍스트 없음", backendOk: false, backendWarning: "" };
+          return { mode: "JSZip PPTX 브라우저 추출", text: text.slice(0, 4000), pageCount: slideNames.length, extractionStatus: "success", backendStatusText: "PPTX 브라우저 추출 완료", backendOk: true, backendWarning: "" };
+        }
+
+        // HWP (구형 바이너리/OLE) — PrvText(미리보기) 스트림 텍스트 추출
+        if (fileType === "hwp" && typeof CFB !== "undefined") {
+          try {
+            const arrayBuffer = await file.arrayBuffer();
+            const cfb = CFB.read(new Uint8Array(arrayBuffer), { type: "array" });
+            let entry = null;
+            try { entry = CFB.find(cfb, "PrvText"); } catch (e) {}
+            if (!entry || !entry.content) {
+              entry = (cfb.FileIndex || []).find(function(e){ return e && e.name && String(e.name).toLowerCase().indexOf("prvtext") !== -1; });
+            }
+            if (entry && entry.content) {
+              const bytes = entry.content instanceof Uint8Array ? entry.content : new Uint8Array(entry.content);
+              const text = new TextDecoder("utf-16le").decode(bytes).replace(/\s+/g, " ").trim();
+              if (text.length >= 20) {
+                return { mode: "HWP PrvText(미리보기) 추출", text: text.slice(0, 4000), pageCount: 0, extractionStatus: "success", backendStatusText: "HWP 미리보기 텍스트 추출 완료", backendOk: true, backendWarning: "" };
+              }
+            }
+          } catch (e) { console.warn("HWP 추출 실패:", e); }
+          return Object.assign({}, fallback, { extractionStatus: "unsupported", backendStatusText: "HWP 미리보기 텍스트 없음 - 파일명 기반 분류", backendOk: false, backendWarning: "HWP 본문 텍스트가 없어 파일명으로 분류합니다." });
         }
 
         // 이미지 → OCR 시도
