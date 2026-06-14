@@ -291,6 +291,7 @@
       color: var(--text-2);
     }
     .folder-row:hover { background: var(--surface-2); color: var(--text); }
+    .folder-row.active { background: var(--accent-soft); color: var(--accent-2); font-weight: 700; }
     .folder-row .folder-actions { display: none; gap: 2px; }
     .folder-row:hover .folder-actions { display: inline-flex; }
     .folder-row:hover .folder-count { display: none; }
@@ -4299,13 +4300,9 @@
                 <input type="radio" name="csSetup" value="default" checked style="margin-top:2px;">
                 <span><b>기본 분류 폴더로 시작</b><br><span style="font-size:11px;color:var(--text-3);">공고/계약/보고서 등 기본 16개 폴더</span></span>
               </label>
-              <label class="cs-opt" style="display:${hasCurrentSpace ? "flex" : "none"};gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;margin-bottom:8px;">
-                <input type="radio" name="csSetup" value="copy" style="margin-top:2px;">
-                <span><b>현재 스페이스 폴더 복사</b><br><span style="font-size:11px;color:var(--text-3);">"${escapeHTML(state.spaceName || "")}"의 분류 폴더를 그대로 복제</span></span>
-              </label>
               <label class="cs-opt" style="display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;">
                 <input type="radio" name="csSetup" value="structure" style="margin-top:2px;">
-                <span><b>폴더 구조 업로드해서 만들기</b><br><span style="font-size:11px;color:var(--text-3);">실제 폴더트리를 올리면 폴더별 파일을 분석해 맞춤 분류 폴더를 추가 (기본 16개 + 업로드 폴더)</span></span>
+                <span><b>폴더 구조 업로드해서 만들기</b><br><span style="font-size:11px;color:var(--text-3);">올린 폴더트리 그대로 분류 폴더를 만듭니다 (기본 16개 없이 올린 폴더만)</span></span>
               </label>
             </div>
           </div>
@@ -4336,13 +4333,12 @@
         showToast("백엔드에 연결할 수 없어 스페이스를 생성할 수 없습니다.", "warning");
         return;
       }
-      // ③ 구조 업로드는 기본 폴더로 스페이스를 만든 뒤, 업로드 폴더를 추가 분석
+      // 구조 업로드는 빈 스페이스(기본 16개 없이)로 만든 뒤 올린 폴더만으로 채움
       const body = {
         team_id: normalizeTeamId(state.teamId),
         name,
-        folder_setup: setup === "copy" ? "copy" : "default"
+        folder_setup: setup === "structure" ? "empty" : "default"
       };
-      if (setup === "copy") body.copy_from_space_id = state.spaceId || "";
       try {
         const response = await fetchApi("/api/spaces", {
           method: "POST",
@@ -4373,13 +4369,92 @@
         return;
       }
       spaceListContainer.innerHTML = state.spaces.map((space) => `
-        <button class="folder-item space-item ${state.spaceId === space.id ? "active" : ""}" type="button" data-space="${escapeAttr(space.id)}">
-          <span><i class="ti ti-folder-open"></i>${escapeHTML(space.name)}</span>
-        </button>
+        <div class="folder-row space-row ${state.spaceId === space.id ? "active" : ""}" data-space="${escapeAttr(space.id)}" style="padding:4px 8px">
+          <span class="space-open" data-space="${escapeAttr(space.id)}" style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;cursor:pointer">
+            <i class="ti ti-stack-2" style="flex-shrink:0"></i>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(space.name)}</span>
+          </span>
+          <span class="folder-actions">
+            <button class="fa-btn sa-rename" data-sid="${escapeAttr(space.id)}" data-sname="${escapeAttr(space.name)}" title="이름 변경" aria-label="이름 변경"><i class="ti ti-pencil"></i></button>
+            <button class="fa-btn sa-copy" data-sid="${escapeAttr(space.id)}" data-sname="${escapeAttr(space.name)}" title="복사" aria-label="복사"><i class="ti ti-copy"></i></button>
+            <button class="fa-btn sa-delete" data-sid="${escapeAttr(space.id)}" data-sname="${escapeAttr(space.name)}" title="삭제" aria-label="삭제"><i class="ti ti-trash"></i></button>
+          </span>
+        </div>
       `).join("");
-      qsa(".space-item").forEach((button) => {
-        button.addEventListener("click", () => selectSpace(button.dataset.space));
-      });
+      qsa(".space-open").forEach((el) => el.addEventListener("click", () => selectSpace(el.dataset.space)));
+      qsa(".sa-rename").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); startInlineRenameSpace(b.dataset.sid, b.dataset.sname, b); }));
+      qsa(".sa-copy").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); copySpace(b.dataset.sid, b.dataset.sname); }));
+      qsa(".sa-delete").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); deleteSpace(b.dataset.sid, b.dataset.sname); }));
+    }
+
+    function startInlineRenameSpace(sid, currentName, btn) {
+      const row = btn.closest(".space-row");
+      if (!row) return;
+      const openEl = row.querySelector(".space-open");
+      if (!openEl || row.querySelector(".inline-edit")) return;
+      const input = document.createElement("input");
+      input.type = "text"; input.value = currentName; input.className = "select inline-edit";
+      input.style.cssText = "flex:1;min-width:0;height:26px;font-size:13px;padding:2px 6px";
+      openEl.style.display = "none";
+      openEl.parentNode.insertBefore(input, openEl);
+      input.focus(); input.select();
+      let done = false;
+      const finish = () => { if (done) return; done = true; input.remove(); openEl.style.display = ""; };
+      const commit = async () => { if (done) return; const name = input.value.trim(); finish(); if (name && name !== currentName) await doRenameSpace(sid, name); };
+      input.addEventListener("click", (e) => e.stopPropagation());
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); commit(); } else if (e.key === "Escape") { e.preventDefault(); finish(); } });
+      input.addEventListener("blur", commit);
+    }
+
+    async function doRenameSpace(sid, name) {
+      if (!currentApiBaseUrl) { await checkBackendHealth(); }
+      if (!currentApiBaseUrl) { showToast("백엔드에 연결할 수 없습니다.", "warning"); return; }
+      try {
+        const res = await fetchApi(`/api/spaces/${encodeURIComponent(sid)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }, 8000);
+        const data = await res.json();
+        if (!data.ok) throw new Error();
+        const sp = state.spaces.find((s) => s.id === sid); if (sp) sp.name = name;
+        if (state.spaceId === sid) state.spaceName = name;
+        saveState(); renderSpaceListInSidebar();
+        showToast(`스페이스 이름을 "${name}"(으)로 변경했습니다.`, "success");
+      } catch (e) { showToast("이름 변경에 실패했습니다.", "warning"); }
+    }
+
+    async function copySpace(sid, name) {
+      if (!currentApiBaseUrl) { await checkBackendHealth(); }
+      if (!currentApiBaseUrl) { showToast("백엔드에 연결할 수 없습니다.", "warning"); return; }
+      try {
+        const res = await fetchApi("/api/spaces", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ team_id: normalizeTeamId(state.teamId), name: `${name} 복사`, folder_setup: "copy", copy_from_space_id: sid }) }, 8000);
+        const data = await res.json();
+        if (!data.ok || !data.space) throw new Error();
+        state.spaces.push(data.space);
+        await selectSpace(data.space.id);
+        renderSpaceListInSidebar();
+        showToast(`"${name}"을(를) 복사했습니다.`, "success");
+      } catch (e) { showToast("복사에 실패했습니다.", "warning"); }
+    }
+
+    async function deleteSpace(sid, name) {
+      if (!state.spaces || state.spaces.length <= 1) { showToast("마지막 스페이스는 삭제할 수 없습니다.", "warning"); return; }
+      if (!confirm(`"${name}" 스페이스를 삭제할까요? (안의 문서는 미분류로 남습니다)`)) return;
+      if (!currentApiBaseUrl) { await checkBackendHealth(); }
+      if (!currentApiBaseUrl) { showToast("백엔드에 연결할 수 없습니다.", "warning"); return; }
+      try {
+        const res = await fetchApi(`/api/spaces/${encodeURIComponent(sid)}`, { method: "DELETE" }, 8000);
+        const data = await res.json();
+        if (!data.ok) throw new Error();
+        state.spaces = state.spaces.filter((s) => s.id !== sid);
+        if (state.spaceId === sid) {
+          const first = state.spaces[0];
+          state.spaceId = first ? first.id : "";
+          state.spaceName = first ? first.name : "";
+          await loadFolderRulesFromBackend(true);
+        }
+        saveState();
+        renderSpaceListInSidebar(); renderFolderNav(); renderFolderFilter(); renderMetrics(); renderDocs();
+        showToast(`"${name}" 스페이스를 삭제했습니다.`, "info");
+      } catch (e) { showToast("삭제에 실패했습니다.", "warning"); }
     }
 
     async function loadSpacesFromBackend() {
@@ -7208,7 +7283,8 @@
       const maxNonOther = Math.max(...nonOther.map((rec) => rec.score));
       const hasStrongEvidence = maxNonOther >= 40;
       const sparse = normalizeText(fileName).replace(/\s+/g, "").length < 5;
-      const otherFolder = getFolderRules().find((folder) => folder.id === "other");
+      const otherFolder = getFolderRules().find((folder) => folder.id === "other")
+        || { id: "other", name: "기타", icon: "ti-folder-question", keywords: [], contextTerms: [], description: "", reason: "" };
       const otherContext = semanticContextScore(combinedText, otherFolder);
       const otherFeedback = learnedFeedbackScore(combinedText, otherFolder, [], otherContext.contextMatched);
       const otherScore = hasStrongEvidence ? 18 : clamp((sparse ? 58 : 46) + otherContext.score + otherFeedback.score, 40, 74);
@@ -7994,8 +8070,11 @@
         reason: r.reason || ""
       }));
       if (!payload.length) return false;
+      // 분류 안전망용 "기타" 폴더 추가 (낮은 신뢰도 문서 fallback)
+      payload.push({ id: "other", folder_id: "other", team_id: getCurrentTeamId(), parent_folder_id: "", name: "기타", icon: "ti-folder-question", description: "분류가 애매한 문서", keywords: [], contextTerms: [], context_terms: [], reason: "" });
       try {
-        const response = await fetchApi(apiPathWithTeamSpace("/api/folder-rules"), {
+        // replace=true: 올린 폴더 구조만으로 교체 (기본 16개 없이)
+        const response = await fetchApi(apiPathWithTeamSpace("/api/folder-rules") + "&replace=true", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ folder_rules: payload })
@@ -10381,60 +10460,35 @@
       }));
     }
 
+    // 저장된 폴더 집합을 "있는 그대로" 정규화 (기본 16개를 강제하지 않음)
+    // → 기본 스페이스는 백엔드가 16개를 주므로 16개, 커스텀(구조 업로드) 스페이스는 올린 폴더만
     function normalizeFolderRules(savedRules) {
       const saved = Array.isArray(savedRules) ? savedRules : [];
-      const defaultIds = new Set(FOLDERS.map((f) => f.id));
-      const base = FOLDERS.map((base) => {
-        const custom = saved.find((rule) => rule.id === base.id || rule.folder_id === base.id || rule.name === base.name || getFolderIdByAnyLabel(rule.name) === base.id) || {};
-        const contextValue = custom.contextTerms ?? custom.context_terms ?? base.contextTerms.join(", ");
+      if (!saved.length) return cloneFolderRules(); // 비었으면(오프라인/초기) 기본 16개로 폴백
+      return saved.map((rule) => {
+        const fid = rule.id || rule.folder_id || getFolderIdByAnyLabel(rule.name) || "other";
+        const base = FOLDERS.find((f) => f.id === fid) || {};
+        const ctx = rule.contextTerms ?? rule.context_terms ?? (base.contextTerms ? base.contextTerms.join(", ") : "");
         return {
-          id: base.id,
-          name: getFolderDisplayName(base.id) || base.name,
-          icon: String(custom.icon || base.icon).trim() || base.icon,
-          keywords: parseListValue(Array.isArray(custom.keywords) ? custom.keywords.join(", ") : custom.keywords || base.keywords.join(", ")),
-          description: String(custom.description || base.description || "").trim(),
-          contextTerms: parseListValue(Array.isArray(contextValue) ? contextValue.join(", ") : contextValue),
-          reason: String(custom.reason || base.reason || "").trim(),
-          parentId: base.parentId ?? null,
-          level: base.level ?? 0
+          id: fid,
+          name: String(rule.name || getFolderDisplayName(fid) || base.name || fid).trim(),
+          icon: String(rule.icon || base.icon || "ti-folder").trim() || "ti-folder",
+          keywords: parseListValue(Array.isArray(rule.keywords) ? rule.keywords.join(", ") : (rule.keywords || (base.keywords ? base.keywords.join(", ") : ""))),
+          description: String(rule.description || base.description || "").trim(),
+          contextTerms: parseListValue(Array.isArray(ctx) ? ctx.join(", ") : (ctx || "")),
+          reason: String(rule.reason || base.reason || "").trim(),
+          parentId: rule.parentId ?? rule.parent_folder_id ?? base.parentId ?? null,
+          level: rule.level ?? base.level ?? 0
         };
       });
-      // 기본 16개에 속하지 않는 커스텀 폴더(구조 업로드 등)는 그대로 보존해 추가
-      const seenIds = new Set(base.map((b) => b.id));
-      const customs = [];
-      saved.forEach((rule) => {
-        const rid = rule.id || rule.folder_id;
-        if (!rid || defaultIds.has(rid) || seenIds.has(rid)) return;
-        seenIds.add(rid);
-        const ctx = rule.contextTerms ?? rule.context_terms ?? "";
-        customs.push({
-          id: rid,
-          name: String(rule.name || rid).trim(),
-          icon: String(rule.icon || "ti-folder").trim() || "ti-folder",
-          keywords: parseListValue(Array.isArray(rule.keywords) ? rule.keywords.join(", ") : rule.keywords || ""),
-          description: String(rule.description || "").trim(),
-          contextTerms: parseListValue(Array.isArray(ctx) ? ctx.join(", ") : ctx),
-          reason: String(rule.reason || "").trim(),
-          parentId: rule.parentId ?? rule.parent_folder_id ?? null,
-          level: rule.level ?? 0,
-          isCustom: true
-        });
-      });
-      return [...base, ...customs];
     }
 
     function getFolderRules() {
-      const rootCount = FOLDERS.filter(f => !f.parentId).length;
-      if (!Array.isArray(state.folderRules) || state.folderRules.length < rootCount) {
+      if (!Array.isArray(state.folderRules) || state.folderRules.length === 0) {
         state.folderRules = folderRulesForTeam(getCurrentTeamId());
       } else {
         state.folderRules = normalizeFolderRules(state.folderRules);
       }
-      // 기본 하위 폴더 중 없는 것 자동 추가
-      const existingIds = new Set(state.folderRules.map(f => f.id));
-      FOLDERS.filter(f => f.parentId && !existingIds.has(f.id)).forEach(f => {
-        state.folderRules.push({ ...f });
-      });
       return state.folderRules;
     }
 

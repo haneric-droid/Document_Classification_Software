@@ -993,12 +993,29 @@ def delete_space(space_id: str, current_user: User = Depends(get_current_user), 
     check_team_access(space.team_id, current_user.id, db)
 
     db.query(Document).filter(Document.space_id == space_id).update({"space_id": None}, synchronize_session=False)
-    db.query(FolderRule).filter(FolderRule.space_id == space_id).update({"space_id": None}, synchronize_session=False)
+    db.query(FolderRule).filter(FolderRule.space_id == space_id).delete(synchronize_session=False)
     db.query(ReviewQueue).filter(ReviewQueue.space_id == space_id).update({"space_id": None}, synchronize_session=False)
     db.delete(space)
     db.commit()
 
     return {"ok": True, "message": "스페이스가 삭제되었습니다."}
+
+
+@app.patch("/api/spaces/{space_id}")
+def rename_space(space_id: str, payload: dict = Body(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    """스페이스 이름 변경"""
+    space = db.query(Space).filter(Space.id == space_id).first()
+    if not space:
+        raise HTTPException(status_code=404, detail="스페이스를 찾을 수 없습니다.")
+    check_team_access(space.team_id, current_user.id, db)
+    new_name = str(payload.get("name") or "").strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="스페이스 이름을 입력해주세요.")
+    space.name = new_name
+    space.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(space)
+    return {"ok": True, "space": {"id": space.id, "name": space.name}}
 
 
 @app.post("/api/migrate-demo-to-personal")
