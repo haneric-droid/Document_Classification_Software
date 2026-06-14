@@ -2787,6 +2787,10 @@
                     <div style="font-size:12px; font-weight:700;"><i class="ti ti-folder-up"></i> 폴더째 올리기</div>
                     <div style="font-size:11px; color:var(--text-3); margin-top:2px;">구조 그대로 폴더 추가</div>
                   </button>
+                  <button class="upmode-btn" data-mode="structure" type="button" style="flex:1; min-width:130px; text-align:left; padding:8px 10px; border:1px solid var(--border-2); border-radius:8px; background:var(--surface); cursor:pointer;">
+                    <div style="font-size:12px; font-weight:700;"><i class="ti ti-folder-cog"></i> 폴더로 분류기준 만들기</div>
+                    <div style="font-size:11px; color:var(--text-3); margin-top:2px;">폴더 분석해 규칙만 생성</div>
+                  </button>
                 </div>
                 <div id="directTargetRow" style="display:none; align-items:center; gap:8px; margin-bottom:10px; padding:8px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px;">
                   <span style="font-size:12px; color:var(--text-2); flex-shrink:0;"><i class="ti ti-target"></i> 넣을 폴더:</span>
@@ -2796,11 +2800,11 @@
                 <div class="drop-zone" id="dropZone" tabindex="0" role="button" aria-label="파일 업로드">
                   <div>
                     <div class="drop-icon"><i class="ti ti-upload"></i></div>
-                    <div class="drop-title">파일을 놓거나 클릭해 업로드</div>
-                    <p class="drop-meta">PDF, DOCX, TXT, HWPX, PPTX, XLSX, CSV는 실제 텍스트 추출을 시도하고 HWP/이미지는 향후 OCR 또는 전용 파서로 확장됩니다.</p>
+                    <div class="drop-title" id="dropTitle">파일을 놓거나 클릭해 업로드</div>
+                    <p class="drop-meta" id="dropMeta">PDF, DOCX, TXT, HWPX, PPTX, XLSX, CSV는 실제 텍스트 추출을 시도하고 HWP/이미지는 OCR로 처리합니다.</p>
                     <button class="btn btn-primary" id="pickFileBtn" type="button"><i class="ti ti-file-upload"></i>파일 선택</button>
                     <button class="btn btn-secondary" id="pickFolderBtn" type="button" style="margin-left: 8px;"><i class="ti ti-folder"></i>폴더 선택</button>
-                    <button class="btn" id="importStructureBtn" type="button" style="margin-left: 8px;border-color:var(--accent);color:var(--accent)"><i class="ti ti-folder-plus"></i>폴더 구조 가져오기</button>
+                    <button class="btn" id="importStructureBtn" type="button" style="display:none;"></button>
                     <div class="file-types" aria-label="지원 형식">
                       <span class="chip">PDF</span>
                       <span class="chip">DOCX</span>
@@ -3647,7 +3651,13 @@
         });
       }
 
-      dropZone.addEventListener("click", () => fileInput.click());
+      // 현재 방식에 맞는 폴더 입력 선택 (structure 모드 → 분류기준용 입력)
+      const folderInputForMode = () => (state.uploadMode === "structure" ? structureInput : folderInput);
+      dropZone.addEventListener("click", () => {
+        const m = state.uploadMode || "auto";
+        if (m === "folder" || m === "structure") folderInputForMode().click();
+        else fileInput.click();
+      });
       pickFileBtn.addEventListener("click", (event) => {
         event.stopPropagation();
         fileInput.click();
@@ -3655,7 +3665,7 @@
       if (pickFolderBtn && folderInput) {
         pickFolderBtn.addEventListener("click", (event) => {
           event.stopPropagation();
-          folderInput.click();
+          folderInputForMode().click();
         });
       }
       dropZone.addEventListener("keydown", (event) => {
@@ -3706,7 +3716,7 @@
       qs("#addSpaceBtn").addEventListener("click", onCreateSpace);
       qsa(".upmode-btn").forEach((b) => b.addEventListener("click", () => setUploadMode(b.dataset.mode)));
       const directSel = qs("#directTargetSelect");
-      if (directSel) directSel.addEventListener("change", (e) => { state.uploadTargetFolderId = e.target.value; saveState(); });
+      if (directSel) directSel.addEventListener("change", (e) => { state.uploadTargetFolderId = e.target.value; saveState(); renderUploadModeBar(); });
       qs("#processList").addEventListener("click", onProcessClick);
       qs("#docsFilterQuery").addEventListener("input", (event) => updateDocFilter("query", event.target.value));
       qs("#folderFilter").addEventListener("change", (event) => updateDocFilter("folder", event.target.value));
@@ -4793,6 +4803,35 @@
           sel.value = state.uploadTargetFolderId;
         }
       }
+
+      // ① 방식에 맞는 선택 버튼만 표시 (파일 선택은 auto/direct에서만)
+      const pickFile = qs("#pickFileBtn");
+      const pickFolder = qs("#pickFolderBtn");
+      if (pickFile) pickFile.style.display = (mode === "auto" || mode === "direct") ? "" : "none";
+      if (pickFolder) {
+        pickFolder.style.display = "";
+        pickFolder.innerHTML = (mode === "structure")
+          ? '<i class="ti ti-folder-search"></i>분석할 폴더 선택'
+          : '<i class="ti ti-folder"></i>폴더 선택';
+      }
+
+      // ② 드롭존이 현재 방식을 안내
+      const dropTitle = qs("#dropTitle");
+      const dropMeta = qs("#dropMeta");
+      let targetName = "";
+      if (mode === "direct") {
+        const t = getFolderRules().find((f) => f.id === state.uploadTargetFolderId);
+        targetName = t ? getFolderPath(t.id) : "";
+      }
+      const hints = {
+        auto: ["파일/폴더를 놓거나 클릭해 업로드", "AI가 내용을 보고 자동으로 폴더를 정합니다."],
+        direct: [`📌 "${targetName || "지정 폴더"}"에 바로 저장`, "분류 없이 위 폴더에 그대로 저장됩니다."],
+        folder: ["📁 폴더를 놓으면 구조 그대로 분류폴더 생성", "하위 폴더까지 만들어 파일을 그 안에 저장합니다."],
+        structure: ["🗂️ 분석할 폴더를 선택하세요", "폴더 내용을 분석해 분류 규칙(키워드)만 만듭니다. 파일은 저장하지 않습니다."]
+      };
+      if (dropTitle) dropTitle.textContent = (hints[mode] || hints.auto)[0];
+      if (dropMeta) dropMeta.textContent = (hints[mode] || hints.auto)[1];
+
       renderClassifyScope();
     }
 
@@ -4837,7 +4876,8 @@
       const notes = {
         auto: "AI가 내용을 보고 자동으로 폴더를 정합니다.",
         direct: "분류 없이 선택한 폴더에 바로 저장합니다.",
-        folder: "폴더를 통째로 올리면 하위 폴더 구조 그대로 분류 폴더가 만들어지고 파일이 그 안에 저장됩니다."
+        folder: "폴더를 통째로 올리면 하위 폴더 구조 그대로 분류 폴더가 만들어지고 파일이 그 안에 저장됩니다.",
+        structure: "폴더를 분석해 분류 규칙(키워드)만 만듭니다. 파일은 저장하지 않습니다."
       };
       showToast(notes[mode] || "", "info");
     }
