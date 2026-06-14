@@ -3844,30 +3844,9 @@
           shape: "rectangular"
         });
       }
-
-      // Firebase Auth Google 로그인 버튼 핸들러 추가
-      const gSignInBtn = document.getElementById("gSignInBtnMain");
-      if (gSignInBtn && window._fbAuth && window._fbGoogleProvider) {
-        gSignInBtn.addEventListener("click", async () => {
-          try {
-            const { signInWithPopup } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
-            const result = await signInWithPopup(window._fbAuth, window._fbGoogleProvider);
-            if (result && result.user) {
-              const user = result.user;
-              localStorage.setItem("USER_INFO", JSON.stringify({
-                email: user.email,
-                name: user.displayName,
-                picture: user.photoURL,
-                uid: user.uid
-              }));
-              showToast(`${user.displayName || user.email}님, 반갑습니다!`, "success");
-              await afterLogin();
-            }
-          } catch (e) {
-            console.warn("Firebase Auth 실패:", e);
-          }
-        });
-      }
+      // 주의: 구글 로그인은 GSI(google.accounts.id) → /api/auth/google(JWT) 단일 경로만 사용한다.
+      // 과거 같은 버튼에 Firebase signInWithPopup 리스너를 중복으로 붙여, GSI 버튼이 div로 렌더될 때
+      // 클릭이 버블링되어 Firebase 팝업까지 동시에 발동(게다가 JWT 미발급)했고 로그인이 튕겼다. → 제거.
     }
 
     async function handleCredentialResponse(response) {
