@@ -585,13 +585,21 @@ def ensure_team_default_space(db: Session, team_id: str) -> Space:
 
 
 def resolve_space_id(db: Session, team_id: str, space_id: str | None) -> str:
-    """team_id + 선택적 space_id를 받아 유효한 space_id로 해석한다 (없으면 기본 스페이스)."""
+    """team_id + 선택적 space_id를 받아 유효한 space_id로 해석한다 (없으면 기본 스페이스).
+
+    프론트의 team_id(쿼리)와 실제 스페이스 소속 팀이 어긋나는 경우에도,
+    스페이스가 존재하면 그 스페이스를 사용한다 (desync 대비). 그렇지 않으면 기본 스페이스.
+    """
     normalized_team_id = normalize_team_id(team_id)
     sid = (space_id or "").strip()
     if sid:
         sp = db.query(Space).filter(Space.id == sid, Space.team_id == normalized_team_id).first()
         if sp:
             return sp.id
+        # 팀이 안 맞아도 스페이스가 존재하면 그대로 사용 (팀/스페이스 desync 방어)
+        sp2 = db.query(Space).filter(Space.id == sid).first()
+        if sp2:
+            return sp2.id
     return ensure_team_default_space(db, normalized_team_id).id
 
 
